@@ -1,69 +1,53 @@
-/* Custom Styles for Fingerjoint Dashboard */
+:root {
+    --bg-main: #f1f5f9;
+    --navy-dark: #0f172a;
+    --kbm-red: #d71920;
+    --border-color: #cbd5e1;
+}
 
 body { 
-    font-family: 'Inter', sans-serif; 
-    background-color: #f3f4f6; 
-    cursor: none; 
-    overflow: hidden; 
+    font-family: 'Plus Jakarta Sans', sans-serif; 
+    background-color: var(--bg-main); 
+    color: #1e293b;
+    cursor: none;
+    margin: 0;
 }
 
-/* Identitas Visual Perusahaan */
 .header-red { 
-    background-color: #d71920; 
+    background-color: var(--kbm-red);
+    border-bottom: 3px solid rgba(0,0,0,0.1);
 } 
 
-.card-shadow { 
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
-    border: 1px solid #e5e7eb; 
-}
-
-.text-actual { 
-    color: #1e293b; 
-    font-weight: 900; 
-}
-
-/* Kontainer Logo Kiosk */
 .logo-container {
     display: flex;
     align-items: center;
-    justify-content: center;
-    /* Kita hilangkan background white, border, dan shadow-inner */
-    background: transparent; 
-    width: auto;      /* Biar lebar mengikuti skala gambar */
-    height: 3.5rem;   /* Tinggi sedikit lebih kecil dari navbar agar proporsional */
-    overflow: visible; /* Penting: Agar bayangan logo tidak terpotong */
+    height: 3rem;
 }
 
 .logo-img {
-    height: 100%;     /* Mengikuti tinggi kontainer */
-    width: auto;      /* Lebar menyesuaikan aspek rasio logo */
-    object-fit: contain;
-    
-    /* SCALE: Membuat logo lebih dominan dan 'Pride' */
-    transform: scale(1.4); 
-    
-    /* PROFESSIONAL TOUCH: Memberi bayangan lembut pada bentuk logo (PNG transparan) 
-       Ini membuat logo terlihat 'timbul' dan tegas di atas warna merah header */
-    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.25));
-    
-    /* Animasi halus saat hover (opsional) */
-    transition: transform 0.3s ease, filter 0.3s ease;
+    height: 100%;
+    transform: scale(1.4);
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
 }
 
-.logo-img:hover {
-    transform: scale(1.45);
-    filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.35));
+.card-industrial {
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 4px; 
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
+.font-mono-industrial {
+    font-family: 'Roboto Mono', monospace !important;
+    font-weight: 700;
+    letter-spacing: -1px;
+}
 
-
-/* Warna Custom Footer */
 .footer-custom-text {
     color: #124170 !important;
+    font-weight: 800;
+    letter-spacing: 0.1em;
 }
 
-/* Memastikan span di dalam footer juga mengikuti warna yang sama */
-.footer-custom-text span, 
-.footer-custom-text div {
-    color: #124170;
-}
+#emoji { line-height: 1; display: block; }
+::-webkit-scrollbar { display: none; }

@@ -3,89 +3,79 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
-const pool = require('../config/db');
-const { initHardware, readInputs } = require('./hardware');
+
+const pool = require('../config/db'); 
+const { initHardware, readInputs } = require('./hardware'); 
+const { getShiftInfo } = require('./utils/shiftManager'); 
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
+const PORT = process.env.PORT || 3001;
 
-const PORT = process.env.PORT || 3000;
-
-// Middleware
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '../public')));
+const publicPath = path.resolve(__dirname, '../public');
+app.use(express.static(publicPath));
 
+app.get('/', (req, res) => {
+    res.sendFile(path.join(publicPath, 'index.html'));
+});
 
-// State untuk kalkulasi (bisa disimpan di memori atau DB)
-let sessionData = {
-    meter_lari: 0,
-    joint_count: 0,
-    lastSensorStatus: false
-};
+let sessionData = { meter_lari: 0, joint_count: 0, lastSensorStatus: false };
 
-// --- LOGIKA UTAMA: POLLING DATA HARDWARE ---
-async function startProductionMonitoring() {
-    console.log("🚀 Monitoring produksi dimulai...");
-    
+async function getHourlyTrend(shiftInfo) {
+    try {
+        const shiftNum = (shiftInfo.shift === "-" || !shiftInfo.shift) ? 0 : parseInt(shiftInfo.shift);
+        let hourlyLabels = (shiftNum === 2) 
+            ? ['15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00', '23:00']
+            : ['07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00'];
+
+        const query = `SELECT to_char(timestamp, 'HH24:00') as jam, SUM(meter_lari) as total FROM production_logs WHERE DATE(timestamp) = CURRENT_DATE AND shift_number = $1 GROUP BY jam ORDER BY jam ASC`;
+        const result = await pool.query(query, [shiftNum]);
+        return {
+            labels: hourlyLabels,
+            values: hourlyLabels.map(label => {
+                const dataPoint = result.rows.find(row => row.jam === label);
+                return dataPoint ? parseFloat(dataPoint.total) : 0;
+            })
+        };
+    } catch (err) { return { labels: [], values: [] }; }
+}
+
+async function broadcastUpdate() {
+    try {
+        const shiftInfo = getShiftInfo();
+        const currentShift = (shiftInfo.shift === "-" || !shiftInfo.shift) ? 0 : parseInt(shiftInfo.shift);
+        const queryResult = await pool.query(`SELECT COALESCE(SUM(meter_lari), 0) as total_meter, (SELECT target_meter_lari FROM production_targets WHERE effective_date = CURRENT_DATE LIMIT 1) as target_val FROM production_logs WHERE DATE(timestamp) = CURRENT_DATE AND shift_number = $1`, [currentShift]);
+        const trendData = await getHourlyTrend(shiftInfo);
+        io.emit('productionUpdate', {
+            current: queryResult.rows[0].total_meter,
+            target: queryResult.rows[0].target_val || 1500,
+            joints: sessionData.joint_count,
+            shift: shiftInfo,
+            trend: trendData.values,
+            labels: trendData.labels
+        });
+    } catch (err) { console.error("❌ Broadcast Error"); }
+}
+
+server.listen(PORT, '0.0.0.0', async () => {
+    console.log(`📡 Dashboard KIOSK berjalan di http://localhost:${PORT}`);
+    await initHardware();
     setInterval(async () => {
-        const inputs = await readInputs(); // Baca 8 channel dari R4DIF08
-        
+        const inputs = await readInputs();
         if (inputs && inputs.length > 0) {
-            const currentSensor = inputs[0]; // Kita gunakan I01 sebagai detektor kayu
-
-            // Deteksi Rising Edge (Sinyal OFF ke ON)
+            const currentSensor = inputs[0]; 
+            const shiftInfo = getShiftInfo();
             if (currentSensor === true && sessionData.lastSensorStatus === false) {
-                sessionData.joint_count++;
-                sessionData.meter_lari += 1.2; // Contoh: Asumsi 1.2 meter per sambungan
-
-                // 1. Simpan ke Database
-                try {
-                    await pool.query(
-                        `INSERT INTO public.production_logs 
-                        (machine_id, meter_lari, joint_count, lebar_kayu, tebal_kayu, shift_number) 
-                        VALUES ($1, $2, $3, $4, $5, $6)`,
-                        [1, 1.2, 1, 100, 50, 1] // Nilai dimensi bisa dinamis dari UI nanti
-                    );
-                } catch (err) {
-                    console.error("❌ Gagal simpan ke DB:", err.message);
+                if (shiftInfo.isOperational) {
+                    sessionData.joint_count++;
+                    sessionData.meter_lari += 1.2;
+                    try { await pool.query(`INSERT INTO public.production_logs (machine_id, meter_lari, joint_count, lebar_kayu, tebal_kayu, shift_number) VALUES (1, 1.2, 1, 100, 50, $1)`, [parseInt(shiftInfo.shift)]); } catch (err) {}
                 }
-
-                // 2. Ambil Target untuk Hitung Progres & Kirim ke Socket.io
                 broadcastUpdate();
             }
             sessionData.lastSensorStatus = currentSensor;
         }
-    }, 100); // Scan setiap 100ms untuk akurasi tinggi
-}
-
-// Fungsi untuk kirim data ke Frontend secara real-time
-async function broadcastUpdate() {
-    try {
-        // Ambil total meter hari ini & targetnya
-        const result = await pool.query(`
-            SELECT 
-                SUM(meter_lari) as total_meter,
-                (SELECT target_meter_lari FROM production_targets WHERE effective_date = CURRENT_DATE LIMIT 1) as target
-            FROM production_logs 
-            WHERE DATE(timestamp) = CURRENT_DATE
-        `);
-
-        const data = {
-            current: result.rows[0].total_meter || 0,
-            target: result.rows[0].target || 1000, // Default target 1000 jika belum diatur
-            joints: sessionData.joint_count
-        };
-
-        io.emit('productionUpdate', data);
-    } catch (err) {
-        console.error("❌ Error broadcasting:", err.message);
-    }
-}
-
-// Inisialisasi Koneksi
-server.listen(PORT, async () => {
-    console.log(`📡 Server berjalan di http://localhost:${PORT}`);
-    await initHardware(); // Konek ke RS485
-    startProductionMonitoring();
+    }, 100);
 });

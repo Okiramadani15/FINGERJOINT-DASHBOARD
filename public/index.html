@@ -3,167 +3,206 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fingerjoint Production Monitor</title>
+    <title>FJ Production Monitoring</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
-    
-    <link rel="stylesheet" href="style.css">
+    <script src="/socket.io/socket.io.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;700;800&family=Roboto+Mono:wght@700&display=swap" rel="stylesheet">
+    <style>
+        :root { --kbm-red: #d71920; --navy-dark: #124170; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f1f5f9; cursor: none; margin: 0; overflow: hidden; }
+        .header-red { background-color: var(--kbm-red); }
+        .card-industrial { background: white; border: 1px solid #cbd5e1; border-radius: 4px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .font-mono-industrial { font-family: 'Roboto Mono', monospace; }
+        ::-webkit-scrollbar { display: none; }
+    </style>
 </head>
-<body class="h-screen flex flex-col" onclick="document.documentElement.requestFullscreen()">
+<body class="h-screen flex flex-col">
 
-    <header class="header-red text-white p-3 flex justify-between items-center shadow-lg">
+    <header class="header-red text-white p-4 flex justify-between items-center shrink-0">
         <div class="flex items-center gap-4">
-            <div class="logo-container">
-                <img src="/images/kbm.png" alt="Logo Perusahaan" class="logo-img">
+            <div class="flex items-center justify-center">
+                <img src="/images/kbm.png" class="h-12 w-auto object-contain" alt="Logo KBM">
             </div>
-            <div class="h-8 w-[1px] bg-white/30 mx-2"></div>
-            <h1 class="text-sm font-bold uppercase tracking-wider italic">Production Dashboard - FingerJoint</h1>
+            <div>
+                <p class="text-[10px] font-bold tracking-widest opacity-80 uppercase">Mill 2 Pematang Siantar</p>
+                <h1 class="text-xl font-extrabold uppercase tracking-tighter">Fingerjoint Production Monitoring</h1>
+            </div>
         </div>
-        <div class="flex gap-4 text-[11px] font-bold">
-            <span id="jam" class="bg-black/20 px-4 py-1.5 rounded-md mono">00:00:00</span>
-            <span class="bg-white text-red-600 px-4 py-1.5 rounded-md uppercase">Shift 1</span>
+        <div class="flex gap-4 items-center">
+            <div id="jam" class="bg-black/20 px-4 py-2 rounded-lg font-mono-industrial text-2xl">00.00.00</div>
+            <div class="bg-white text-slate-900 px-4 py-2 rounded-lg flex gap-2 items-center">
+                <span class="text-[10px] font-bold text-slate-400">SHIFT</span>
+                <span id="shift-num" class="text-xl font-black">2</span>
+                <span id="shift-name" class="text-[10px] font-bold text-slate-500 uppercase">(SORE)</span>
+            </div>
         </div>
     </header>
 
-    <main class="p-4 grid grid-cols-12 gap-4 flex-grow overflow-hidden">
-        <div class="col-span-3 flex flex-col gap-4">
-            <div class="bg-white rounded p-6 card-shadow flex-grow flex flex-col items-center justify-center text-center">
-                <span class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-6">Efisiensi Produksi</span>
-                <div class="mb-4">
-                    <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Meter Lari (Actual)</p>
-                    <p id="meter-lari" class="text-7xl text-actual leading-none">0.0</p>
+    <main class="flex-1 p-6 grid grid-cols-12 gap-6 overflow-hidden">
+        
+        <div class="col-span-3 card-industrial p-8 flex flex-col items-center justify-between text-center">
+            <h2 class="text-slate-400 font-bold text-[12px] uppercase tracking-[.2em]">Efficiency Engine</h2>
+            
+            <div class="py-6">
+                <p class="text-slate-400 font-bold text-[10px] uppercase mb-1">Actual Output</p>
+                <div class="flex flex-col items-center">
+                    <span id="meter-lari" class="text-8xl font-black tracking-tighter text-slate-800 leading-none">0.0</span>
+                    <span class="text-slate-400 font-bold text-xs mt-2 uppercase">Meter Lari</span>
                 </div>
-                <div class="mb-8 border-t border-gray-100 pt-6 w-full">
-                    <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Capaian Target</p>
-                    <p id="persen-teks" class="text-6xl font-black text-green-600">0%</p>
-                </div>
-                <div id="emoji-container" class="bg-slate-50 rounded-full p-4 border border-slate-100 shadow-inner">
-                    <span id="emoji" class="text-8xl">😊</span>
-                </div>
-                <p id="label-mood" class="mt-4 font-black uppercase text-slate-800 tracking-tighter italic text-xl">Good Job!</p>
+            </div>
+
+            <div class="w-full">
+                <p class="text-slate-400 font-bold text-[10px] uppercase mb-2">Target Achievement</p>
+                <div id="persen-teks" class="text-6xl font-black text-emerald-500 tracking-tighter">0%</div>
+            </div>
+
+            <div class="mt-4 flex flex-col items-center">
+                <div id="emoji" class="text-7xl mb-2">😐</div>
+                <div id="label-mood" class="text-[10px] font-black uppercase tracking-widest text-slate-400 italic">Awaiting Data</div>
             </div>
         </div>
 
-        <div class="col-span-9 grid grid-rows-2 gap-4">
-            <div class="bg-white rounded p-4 card-shadow flex flex-col">
-                <div class="flex justify-between items-center mb-2 px-2">
-                    <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Tren Produksi Per Jam (m')</span>
+        <div class="col-span-9 grid grid-rows-2 gap-6">
+            
+            <div class="card-industrial p-6 flex flex-col h-full">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-slate-400 font-bold text-[12px] uppercase tracking-[.1em]">Production Trend / Hour (M')</h2>
                     <div class="flex items-center gap-2">
-                        <span class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
-                        <span class="text-[9px] font-bold text-blue-600 uppercase">Live Sensor Data</span>
+                        <span class="w-2 h-2 bg-emerald-500 rounded-full"></span>
+                        <span class="text-[9px] font-bold text-slate-400 uppercase">Live HMI Data</span>
                     </div>
                 </div>
-                <div class="flex-grow">
+                <div class="flex-1">
                     <canvas id="barChart"></canvas>
                 </div>
             </div>
 
-            <div class="grid grid-cols-3 gap-4">
-                <div class="bg-white rounded p-6 card-shadow border-t-4 border-emerald-500">
-                    <span class="text-[10px] font-black text-gray-400 uppercase block mb-4">Kondisi Pisau</span>
-                    <div class="flex justify-between items-end">
-                        <div>
-                            <p id="joints" class="text-5xl font-black text-slate-800 leading-none">0</p>
-                            <p class="text-[8px] font-bold text-gray-400 uppercase mt-2">Total Sambungan</p>
+            <div class="grid grid-cols-3 gap-6">
+                <div class="card-industrial p-6 flex flex-col justify-between">
+                    <div>
+                        <h2 class="text-slate-400 font-bold text-[10px] uppercase tracking-widest mb-4">Knife Sharpness</h2>
+                        <div class="flex justify-between items-baseline">
+                            <span id="joints" class="text-6xl font-black text-slate-800">0</span>
+                            <span id="label-pisau" class="text-emerald-500 font-bold text-xl">100%</span>
                         </div>
-                        <div class="text-right">
-                            <p id="label-pisau" class="text-lg font-bold text-emerald-600">100%</p>
-                            <p class="text-[8px] font-bold text-gray-400 uppercase tracking-tighter">Sharpness</p>
-                        </div>
+                        <p class="text-[9px] font-bold text-slate-400 uppercase mt-1">Joints Created</p>
                     </div>
-                    <div class="w-full bg-gray-100 h-2 mt-4 rounded-full overflow-hidden">
-                        <div id="bar-pisau" class="bg-emerald-500 h-full w-full transition-all duration-1000"></div>
+                    <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden mt-4">
+                        <div id="bar-pisau" class="bg-emerald-500 h-full w-full"></div>
                     </div>
                 </div>
 
-                <div class="bg-white rounded p-6 card-shadow border-t-4 border-blue-500">
-                    <span class="text-[10px] font-black text-gray-400 uppercase block mb-4">Sisa Kurang</span>
-                    <div class="flex justify-between items-baseline">
-                        <p id="sisa-target" class="text-5xl font-black text-blue-600 leading-none">1500</p>
-                        <span class="text-xs font-bold text-gray-400 italic font-mono uppercase">Meter</span>
+                <div class="card-industrial p-6 flex flex-col justify-center border-l-[6px] border-l-blue-500">
+                    <h2 class="text-slate-400 font-bold text-[10px] uppercase tracking-widest mb-2">Target Gap</h2>
+                    <div class="flex items-baseline gap-2">
+                        <span id="sisa-target" class="text-6xl font-black text-blue-600">0</span>
+                        <span class="text-slate-400 font-bold text-xs uppercase">Mtr</span>
                     </div>
-                    <p class="text-[9px] font-bold text-slate-400 mt-4 italic uppercase">Target: <span id="target-val">1500</span> m'</p>
+                    <p class="text-[9px] font-bold text-slate-400 uppercase">Objective: <span id="target-val">0</span> M'</p>
                 </div>
 
-                <div class="bg-[#1e293b] rounded p-6 card-shadow text-white flex flex-col justify-center items-center text-center">
-                    <div class="w-4 h-4 bg-green-500 rounded-full animate-pulse mb-3 shadow-[0_0_15px_#22c55e]"></div>
-                    <p class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">System Status</p>
-                    <p class="text-2xl font-black text-green-400 uppercase tracking-tight">Running</p>
+                <div id="status-card" class="bg-slate-900 p-6 flex flex-col items-center justify-center rounded-lg">
+                    <div id="status-light" class="w-2 h-2 bg-slate-600 rounded-full mb-4"></div>
+                    <h2 class="text-slate-500 font-bold text-[10px] uppercase tracking-widest mb-2">Controller Status</h2>
+                    <div id="status-mesin" class="text-4xl font-black text-slate-600 tracking-tighter">STANDBY</div>
                 </div>
             </div>
         </div>
     </main>
 
-    <footer class="bg-white border-t border-gray-200 p-2 flex justify-between px-6 text-[9px] font-black uppercase tracking-[0.3em] footer-custom-text">
-        <div>FJ-CONTROL-SYS v1.0 | MILL 2 PEMATANG SIANTAR</div>
+    <footer class="p-4 flex justify-between items-center text-[10px] font-bold text-slate-400 bg-slate-50 border-t border-slate-200 shrink-0">
         <div class="flex gap-4">
-            <span class="italic uppercase">Kiosk Mode Active</span>
-            <span class="opacity-30">|</span>
-            <span>Klik Layar Untuk Full Screen</span>
+            <span>FJ-CONTROL-SYS</span>
+            <span>|</span>
+            <span>MILL 2 PS</span>
+            <span>|</span>
+            <span>HMI V1.2</span>
         </div>
+        <div class="tracking-[0.2em] text-[#124170] uppercase">Kiosk Mode Active</div>
     </footer>
 
     <script>
-        // ... (Kode JavaScript Anda yang sama seperti sebelumnya)
-        const socket = io();
-        const LIMIT_PISAU = 5000;
-        
-        setInterval(() => {
-            document.getElementById('jam').innerText = new Date().toLocaleTimeString('id-ID', { hour12: false });
-        }, 1000);
-
-        const ctx = document.getElementById('barChart').getContext('2d');
-        const barChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00'],
-                datasets: [{
-                    label: 'Meter Lari',
-                    data: [120, 155, 138, 0, 192, 165, 0, 0],
-                    backgroundColor: '#3b82f6',
-                    borderRadius: 4,
-                    barPercentage: 0.6
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    y: { beginAtZero: true, grid: { color: '#f3f4f6' }, ticks: { font: { size: 9 } } },
-                    x: { grid: { display: false }, ticks: { font: { size: 9, weight: 'bold' } } }
+        let barChart;
+        function initChart() {
+            const ctx = document.getElementById('barChart').getContext('2d');
+            barChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00'],
+                    datasets: [{
+                        data: [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                        backgroundColor: '#f1f5f9',
+                        borderColor: '#cbd5e1',
+                        borderWidth: 1,
+                        borderRadius: 2,
+                        barPercentage: 0.7
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { color: '#94a3b8', font: { size: 9 } } },
+                        x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 10, weight: 'bold' } } }
+                    }
                 }
-            }
-        });
+            });
+        }
 
-        socket.on('productionUpdate', (data) => {
-            const hasil = parseFloat(data.current);
-            const target = data.target || 1500;
-            const joints = parseInt(data.joints);
-            const persen = Math.min((hasil / target) * 100, 100);
+        window.onload = function() {
+            initChart();
+            const socket = io();
+            socket.on('productionUpdate', (data) => {
+                const hasil = parseFloat(data.current) || 0;
+                const target = data.target || 1500;
+                const joints = parseInt(data.joints) || 0;
+                const persen = Math.min((hasil / target) * 100, 100);
 
-            document.getElementById('meter-lari').innerText = hasil.toFixed(1);
-            document.getElementById('persen-teks').innerText = Math.round(persen) + '%';
-            document.getElementById('sisa-target').innerText = Math.max(target - hasil, 0).toFixed(0);
-            document.getElementById('target-val').innerText = target;
-            document.getElementById('joints').innerText = joints;
+                document.getElementById('meter-lari').innerText = hasil.toFixed(1);
+                document.getElementById('persen-teks').innerText = Math.round(persen) + '%';
+                document.getElementById('sisa-target').innerText = Math.max(target - hasil, 0).toFixed(0);
+                document.getElementById('target-val').innerText = target;
+                document.getElementById('joints').innerText = joints;
 
-            const lifePisau = Math.max(0, ((LIMIT_PISAU - joints) / LIMIT_PISAU) * 100);
-            document.getElementById('bar-pisau').style.width = lifePisau + '%';
-            document.getElementById('label-pisau').innerText = Math.round(lifePisau) + '%';
+                if (barChart && data.trend && data.labels) {
+                    barChart.data.labels = data.labels;
+                    barChart.data.datasets[0].data = data.trend;
+                    barChart.data.datasets[0].backgroundColor = '#124170';
+                    barChart.update();
+                }
 
-            const emojiEl = document.getElementById('emoji');
-            const labelEl = document.getElementById('label-mood');
-            if (persen < 40) {
-                emojiEl.innerText = '😐'; labelEl.innerText = 'Keep Going!';
-            } else if (persen < 90) {
-                emojiEl.innerText = '😊'; labelEl.innerText = 'Good Job!';
-            } else {
-                emojiEl.innerText = '🤩'; labelEl.innerText = 'Outstanding!';
-            }
-        });
+                if (data.shift) {
+                    document.getElementById('shift-num').innerText = data.shift.shift;
+                    document.getElementById('shift-name').innerText = `(${data.shift.name})`;
+                    const stMesin = document.getElementById('status-mesin');
+                    const stLight = document.getElementById('status-light');
+                    const stCard = document.getElementById('status-card');
+                    if (data.shift.isOperational) {
+                        stMesin.innerText = "RUNNING"; stMesin.className = "text-4xl font-black text-emerald-400 tracking-tighter";
+                        stLight.className = "w-2 h-2 bg-emerald-500 rounded-full mb-4 animate-pulse";
+                        stCard.className = "bg-slate-900 p-6 flex flex-col items-center justify-center rounded-lg shadow-[inset_0_0_20px_rgba(16,185,129,0.1)]";
+                    } else {
+                        stMesin.innerText = "STANDBY"; stMesin.className = "text-4xl font-black text-slate-600 tracking-tighter";
+                        stLight.className = "w-2 h-2 bg-slate-600 rounded-full mb-4";
+                        stCard.className = "bg-slate-900 p-6 flex flex-col items-center justify-center rounded-lg";
+                    }
+                }
+
+                const lifePisau = Math.max(0, ((5000 - joints) / 5000) * 100);
+                document.getElementById('bar-pisau').style.width = lifePisau + '%';
+                document.getElementById('label-pisau').innerText = Math.round(lifePisau) + '%';
+                const em = document.getElementById('emoji'); const lb = document.getElementById('label-mood');
+                if (persen < 40) { em.innerText = '😐'; lb.innerText = 'Need Focus'; }
+                else if (persen < 90) { em.innerText = '😊'; lb.innerText = 'Good Progress'; }
+                else { em.innerText = '🤩'; lb.innerText = 'Outstanding'; }
+            });
+
+            setInterval(() => {
+                document.getElementById('jam').innerText = new Date().toLocaleTimeString('id-ID', { hour12: false }).replace(/:/g, '.');
+            }, 1000);
+        };
     </script>
 </body>
 </html>
