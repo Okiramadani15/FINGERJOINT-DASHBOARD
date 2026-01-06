@@ -19,31 +19,37 @@
 </head>
 <body class="h-screen flex flex-col" onclick="toggleFullScreen()">
 
-    <header class="header-red text-white p-4 flex justify-between items-center shrink-0">
+    <header class="header-red text-white p-4 flex justify-between items-center shrink-0 shadow-lg">
         <div class="flex items-center gap-4">
             <div class="flex items-center justify-center cursor-help" onclick="handleSecretReset(event)">
                 <img src="/images/kbm.png" class="h-12 w-auto object-contain" alt="Logo KBM">
             </div>
             <div>
-                <p class="text-[10px] font-bold tracking-widest opacity-80 uppercase">PT.Karyabhakti Manunggal MILL 2</p>
+                <p class="text-[10px] font-bold tracking-widest opacity-80 uppercase">PT. Karyabhakti Manunggal MILL 2</p>
                 <h1 class="text-xl font-extrabold uppercase tracking-tighter">Production Monitoring DASHBOARD</h1>
             </div>
         </div>
-        <div class="flex gap-4 items-center">
-            <div id="jam" class="bg-black/20 px-4 py-2 rounded-lg font-mono-industrial text-2xl">00.00.00</div>
-            <div class="bg-white text-slate-900 px-4 py-2 rounded-lg flex gap-2 items-center">
-                <span class="text-[10px] font-bold text-slate-400">SHIFT</span>
-                <span id="shift-num" class="text-xl font-black">-</span>
-                <span id="shift-name" class="text-[10px] font-bold text-slate-500 uppercase">(-)</span>
+        <div class="flex gap-6 items-center">
+            <div class="text-right">
+                <div id="tanggal-hari-ini" class="text-[10px] font-bold opacity-80 uppercase tracking-widest mb-1 text-white">Memuat Tanggal...</div>
+                <div id="jam" class="bg-black/20 px-4 py-1 rounded-lg font-mono-industrial text-3xl leading-tight">00.00.00</div>
+            </div>
+            <div class="bg-white text-slate-900 px-5 py-2 rounded-lg flex flex-col items-center min-w-[100px] shadow-md">
+                <span class="text-[10px] font-black text-slate-400 uppercase leading-none mb-1">Shift</span>
+                <div class="flex items-center gap-1">
+                    <span id="shift-num" class="text-2xl font-black leading-none">-</span>
+                    <span id="shift-name" class="text-[10px] font-bold text-slate-500 uppercase leading-none">(-)</span>
+                </div>
             </div>
         </div>
     </header>
 
     <main class="flex-1 p-6 grid grid-cols-12 gap-6 overflow-hidden">
-        <div class="col-span-3 card-industrial p-8 flex flex-col items-center justify-between text-center">
+        <div class="col-span-3 card-industrial p-8 flex flex-col items-center justify-between text-center relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-1 bg-slate-100"></div>
             <h2 class="text-slate-400 font-bold text-[12px] uppercase tracking-[.2em]">Efficiency Engine</h2>
             <div class="py-6">
-                <p class="text-slate-400 font-bold text-[10px] uppercase mb-1">Actual Output</p>
+                <p class="text-slate-400 font-bold text-[10px] uppercase mb-1">Actual Output (Gross)</p>
                 <div class="flex flex-col items-center">
                     <span id="meter-lari" class="text-8xl font-black tracking-tighter text-slate-800 leading-none">0.0</span>
                     <span class="text-slate-400 font-bold text-xs mt-2 uppercase">Meter Lari</span>
@@ -60,15 +66,21 @@
         </div>
 
         <div class="col-span-9 grid grid-rows-2 gap-6">
-            <div class="card-industrial p-6 flex flex-col h-full">
+            <div class="card-industrial p-6 flex flex-col h-full relative">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-slate-400 font-bold text-[12px] uppercase tracking-[.1em]">Production Trend / Hour (M')</h2>
-                    <div class="flex items-center gap-2">
-                        <span class="w-2 h-2 bg-emerald-500 rounded-full"></span>
-                        <span class="text-[9px] font-bold text-slate-400 uppercase">Live HMI Data</span>
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 bg-[#124170] rounded-sm"></span>
+                            <span class="text-[9px] font-bold text-slate-500 uppercase">Machine</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 bg-[#10b981] rounded-sm"></span>
+                            <span class="text-[9px] font-bold text-slate-500 uppercase">Tally Nett</span>
+                        </div>
                     </div>
                 </div>
-                <div class="flex-1">
+                <div class="flex-1 min-h-0">
                     <canvas id="barChart"></canvas>
                 </div>
             </div>
@@ -84,7 +96,7 @@
                         <p class="text-[9px] font-bold text-slate-400 uppercase mt-1">Joints Created</p>
                     </div>
                     <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden mt-4">
-                        <div id="bar-pisau" class="bg-emerald-500 h-full w-full"></div>
+                        <div id="bar-pisau" class="bg-emerald-500 h-full w-full transition-all duration-500"></div>
                     </div>
                 </div>
 
@@ -94,13 +106,13 @@
                         <span id="sisa-target" class="text-6xl font-black text-blue-600">0</span>
                         <span class="text-slate-400 font-bold text-xs uppercase">Mtr</span>
                     </div>
-                    <p class="text-[9px] font-bold text-slate-400 uppercase">Objective: <span id="target-val">0</span> M'</p>
+                    <p class="text-[9px] font-bold text-slate-400 uppercase">Objective: <span id="target-val" class="font-black">0</span> M'</p>
                 </div>
 
                 <div id="status-card" class="bg-slate-900 p-6 flex flex-col items-center justify-center rounded-lg transition-all duration-300">
-                    <div id="status-light" class="w-2 h-2 bg-slate-600 rounded-full mb-4"></div>
+                    <div id="status-light" class="w-3 h-3 bg-slate-600 rounded-full mb-4 shadow-lg transition-all duration-300"></div>
                     <h2 class="text-slate-500 font-bold text-[10px] uppercase tracking-widest mb-2">Controller Status</h2>
-                    <div id="status-mesin" class="text-4xl font-black text-slate-600 tracking-tighter uppercase">Standby</div>
+                    <div id="status-mesin" class="text-4xl font-black text-slate-600 tracking-tighter uppercase transition-colors duration-300">Standby</div>
                 </div>
             </div>
         </div>
@@ -108,7 +120,9 @@
 
     <footer class="p-4 flex justify-between items-center text-[10px] font-bold text-slate-400 bg-slate-50 border-t border-slate-200 shrink-0">
         <div class="flex gap-4">
-            <span>FJ-CONTROL-SYS</span> | <span>MILL 2 PS</span> | <span>HMI V1.0</span>
+            <span class="bg-slate-200 px-2 py-0.5 rounded text-slate-600">FJ-CONTROL-SYS</span>
+            <span class="bg-slate-200 px-2 py-0.5 rounded text-slate-600">MILL 2 PS</span>
+            <span class="bg-slate-200 px-2 py-0.5 rounded text-slate-600">HMI V1.0</span>
         </div>
         <div class="tracking-[0.2em] text-[#124170] uppercase">Kiosk Mode Active</div>
     </footer>
