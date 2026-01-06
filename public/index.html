@@ -10,40 +10,38 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;700;800&family=Roboto+Mono:wght@700&display=swap" rel="stylesheet">
     <style>
         :root { --kbm-red: #d71920; --navy-dark: #124170; }
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f1f5f9; cursor: none; margin: 0; overflow: hidden; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f1f5f9; cursor: pointer; margin: 0; overflow: hidden; }
         .header-red { background-color: var(--kbm-red); }
         .card-industrial { background: white; border: 1px solid #cbd5e1; border-radius: 4px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
         .font-mono-industrial { font-family: 'Roboto Mono', monospace; }
         ::-webkit-scrollbar { display: none; }
     </style>
 </head>
-<body class="h-screen flex flex-col">
+<body class="h-screen flex flex-col" onclick="toggleFullScreen()">
 
     <header class="header-red text-white p-4 flex justify-between items-center shrink-0">
         <div class="flex items-center gap-4">
-            <div class="flex items-center justify-center">
+            <div class="flex items-center justify-center cursor-help" onclick="handleSecretReset(event)">
                 <img src="/images/kbm.png" class="h-12 w-auto object-contain" alt="Logo KBM">
             </div>
             <div>
-                <p class="text-[10px] font-bold tracking-widest opacity-80 uppercase">Mill 2 Pematang Siantar</p>
-                <h1 class="text-xl font-extrabold uppercase tracking-tighter">Fingerjoint Production Monitoring</h1>
+                <p class="text-[10px] font-bold tracking-widest opacity-80 uppercase">PT.Karyabhakti Manunggal MILL 2</p>
+                <h1 class="text-xl font-extrabold uppercase tracking-tighter">Production Monitoring DASHBOARD</h1>
             </div>
         </div>
         <div class="flex gap-4 items-center">
             <div id="jam" class="bg-black/20 px-4 py-2 rounded-lg font-mono-industrial text-2xl">00.00.00</div>
             <div class="bg-white text-slate-900 px-4 py-2 rounded-lg flex gap-2 items-center">
                 <span class="text-[10px] font-bold text-slate-400">SHIFT</span>
-                <span id="shift-num" class="text-xl font-black">2</span>
-                <span id="shift-name" class="text-[10px] font-bold text-slate-500 uppercase">(SORE)</span>
+                <span id="shift-num" class="text-xl font-black">-</span>
+                <span id="shift-name" class="text-[10px] font-bold text-slate-500 uppercase">(-)</span>
             </div>
         </div>
     </header>
 
     <main class="flex-1 p-6 grid grid-cols-12 gap-6 overflow-hidden">
-        
         <div class="col-span-3 card-industrial p-8 flex flex-col items-center justify-between text-center">
             <h2 class="text-slate-400 font-bold text-[12px] uppercase tracking-[.2em]">Efficiency Engine</h2>
-            
             <div class="py-6">
                 <p class="text-slate-400 font-bold text-[10px] uppercase mb-1">Actual Output</p>
                 <div class="flex flex-col items-center">
@@ -51,12 +49,10 @@
                     <span class="text-slate-400 font-bold text-xs mt-2 uppercase">Meter Lari</span>
                 </div>
             </div>
-
             <div class="w-full">
                 <p class="text-slate-400 font-bold text-[10px] uppercase mb-2">Target Achievement</p>
                 <div id="persen-teks" class="text-6xl font-black text-emerald-500 tracking-tighter">0%</div>
             </div>
-
             <div class="mt-4 flex flex-col items-center">
                 <div id="emoji" class="text-7xl mb-2">😐</div>
                 <div id="label-mood" class="text-[10px] font-black uppercase tracking-widest text-slate-400 italic">Awaiting Data</div>
@@ -64,7 +60,6 @@
         </div>
 
         <div class="col-span-9 grid grid-rows-2 gap-6">
-            
             <div class="card-industrial p-6 flex flex-col h-full">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-slate-400 font-bold text-[12px] uppercase tracking-[.1em]">Production Trend / Hour (M')</h2>
@@ -102,10 +97,10 @@
                     <p class="text-[9px] font-bold text-slate-400 uppercase">Objective: <span id="target-val">0</span> M'</p>
                 </div>
 
-                <div id="status-card" class="bg-slate-900 p-6 flex flex-col items-center justify-center rounded-lg">
+                <div id="status-card" class="bg-slate-900 p-6 flex flex-col items-center justify-center rounded-lg transition-all duration-300">
                     <div id="status-light" class="w-2 h-2 bg-slate-600 rounded-full mb-4"></div>
                     <h2 class="text-slate-500 font-bold text-[10px] uppercase tracking-widest mb-2">Controller Status</h2>
-                    <div id="status-mesin" class="text-4xl font-black text-slate-600 tracking-tighter">STANDBY</div>
+                    <div id="status-mesin" class="text-4xl font-black text-slate-600 tracking-tighter uppercase">Standby</div>
                 </div>
             </div>
         </div>
@@ -113,96 +108,11 @@
 
     <footer class="p-4 flex justify-between items-center text-[10px] font-bold text-slate-400 bg-slate-50 border-t border-slate-200 shrink-0">
         <div class="flex gap-4">
-            <span>FJ-CONTROL-SYS</span>
-            <span>|</span>
-            <span>MILL 2 PS</span>
-            <span>|</span>
-            <span>HMI V1.2</span>
+            <span>FJ-CONTROL-SYS</span> | <span>MILL 2 PS</span> | <span>HMI V1.0</span>
         </div>
         <div class="tracking-[0.2em] text-[#124170] uppercase">Kiosk Mode Active</div>
     </footer>
 
-    <script>
-        let barChart;
-        function initChart() {
-            const ctx = document.getElementById('barChart').getContext('2d');
-            barChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: ['07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00'],
-                    datasets: [{
-                        data: [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                        backgroundColor: '#f1f5f9',
-                        borderColor: '#cbd5e1',
-                        borderWidth: 1,
-                        borderRadius: 2,
-                        barPercentage: 0.7
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { color: '#94a3b8', font: { size: 9 } } },
-                        x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 10, weight: 'bold' } } }
-                    }
-                }
-            });
-        }
-
-        window.onload = function() {
-            initChart();
-            const socket = io();
-            socket.on('productionUpdate', (data) => {
-                const hasil = parseFloat(data.current) || 0;
-                const target = data.target || 1500;
-                const joints = parseInt(data.joints) || 0;
-                const persen = Math.min((hasil / target) * 100, 100);
-
-                document.getElementById('meter-lari').innerText = hasil.toFixed(1);
-                document.getElementById('persen-teks').innerText = Math.round(persen) + '%';
-                document.getElementById('sisa-target').innerText = Math.max(target - hasil, 0).toFixed(0);
-                document.getElementById('target-val').innerText = target;
-                document.getElementById('joints').innerText = joints;
-
-                if (barChart && data.trend && data.labels) {
-                    barChart.data.labels = data.labels;
-                    barChart.data.datasets[0].data = data.trend;
-                    barChart.data.datasets[0].backgroundColor = '#124170';
-                    barChart.update();
-                }
-
-                if (data.shift) {
-                    document.getElementById('shift-num').innerText = data.shift.shift;
-                    document.getElementById('shift-name').innerText = `(${data.shift.name})`;
-                    const stMesin = document.getElementById('status-mesin');
-                    const stLight = document.getElementById('status-light');
-                    const stCard = document.getElementById('status-card');
-                    if (data.shift.isOperational) {
-                        stMesin.innerText = "RUNNING"; stMesin.className = "text-4xl font-black text-emerald-400 tracking-tighter";
-                        stLight.className = "w-2 h-2 bg-emerald-500 rounded-full mb-4 animate-pulse";
-                        stCard.className = "bg-slate-900 p-6 flex flex-col items-center justify-center rounded-lg shadow-[inset_0_0_20px_rgba(16,185,129,0.1)]";
-                    } else {
-                        stMesin.innerText = "STANDBY"; stMesin.className = "text-4xl font-black text-slate-600 tracking-tighter";
-                        stLight.className = "w-2 h-2 bg-slate-600 rounded-full mb-4";
-                        stCard.className = "bg-slate-900 p-6 flex flex-col items-center justify-center rounded-lg";
-                    }
-                }
-
-                const lifePisau = Math.max(0, ((5000 - joints) / 5000) * 100);
-                document.getElementById('bar-pisau').style.width = lifePisau + '%';
-                document.getElementById('label-pisau').innerText = Math.round(lifePisau) + '%';
-                const em = document.getElementById('emoji'); const lb = document.getElementById('label-mood');
-                if (persen < 40) { em.innerText = '😐'; lb.innerText = 'Need Focus'; }
-                else if (persen < 90) { em.innerText = '😊'; lb.innerText = 'Good Progress'; }
-                else { em.innerText = '🤩'; lb.innerText = 'Outstanding'; }
-            });
-
-            setInterval(() => {
-                document.getElementById('jam').innerText = new Date().toLocaleTimeString('id-ID', { hour12: false }).replace(/:/g, '.');
-            }, 1000);
-        };
-    </script>
+    <script src="/js/kiosk.js"></script>
 </body>
 </html>
