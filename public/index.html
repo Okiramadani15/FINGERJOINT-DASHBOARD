@@ -1,82 +1,113 @@
-<!DOCTYPE html>
+
+
+<!-- <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FJ Production Monitoring</title>
+    <title>FJ Production Monitoring - Mill 2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="/socket.io/socket.io.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;700;800&family=Roboto+Mono:wght@700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Roboto+Mono:wght@700&display=swap" rel="stylesheet">
     <style>
-        :root { --kbm-red: #d71920; --navy-dark: #124170; }
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f1f5f9; cursor: pointer; margin: 0; overflow: hidden; }
+        :root { --kbm-red: #d71920; --navy-dark: #124170; --slate-900: #0f172a; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; cursor: none; margin: 0; overflow: hidden; }
         .header-red { background-color: var(--kbm-red); }
-        .card-industrial { background: white; border: 1px solid #cbd5e1; border-radius: 4px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        
+        /* Card Industrial */
+        .card-industrial { 
+            background: white; 
+            border: 1px solid #e2e8f0; 
+            border-radius: 16px; 
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 10px 15px -3px rgba(0, 0, 0, 0.03);
+        }
+        
         .font-mono-industrial { font-family: 'Roboto Mono', monospace; }
         ::-webkit-scrollbar { display: none; }
+
+        /* Animasi Mood */
+        @keyframes subtle-bounce {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-10px) scale(1.05); }
+        }
+        .animate-mood { animation: subtle-bounce 4s infinite ease-in-out; }
+        
+        /* Status Glow */
+        .status-running { background: #0f172a; box-shadow: inset 0 0 20px rgba(0,0,0,0.4); }
+        .running-glow { text-shadow: 0 0 15px rgba(52, 211, 153, 0.6); }
+        
+        @keyframes pulse-light {
+            0%, 100% { opacity: 1; filter: brightness(1); transform: scale(1); }
+            50% { opacity: 0.7; filter: brightness(1.5); transform: scale(1.2); }
+        }
+        .animate-light { animation: pulse-light 2s infinite ease-in-out; }
+
+        /* Cursor pointer khusus logo untuk admin */
+        .admin-reset-trigger { cursor: pointer; transition: opacity 0.2s; }
+        .admin-reset-trigger:active { opacity: 0.5; }
     </style>
 </head>
 <body class="h-screen flex flex-col" onclick="toggleFullScreen()">
 
-    <header class="header-red text-white p-4 flex justify-between items-center shrink-0 shadow-lg">
-        <div class="flex items-center gap-4">
-            <div class="flex items-center justify-center cursor-help" onclick="handleSecretReset(event)">
-                <img src="/images/kbm.png" class="h-12 w-auto object-contain" alt="Logo KBM">
+    <header class="header-red text-white p-4 flex justify-between items-center shrink-0 shadow-2xl z-20">
+        <div class="flex items-center gap-5">
+            <div class="bg-white p-1.5 rounded-lg shadow-inner flex items-center justify-center admin-reset-trigger" onclick="handleSecretReset(event)">
+                <img src="/images/kbm.png" class="h-10 w-auto object-contain" alt="Logo KBM">
             </div>
             <div>
-                <p class="text-[10px] font-bold tracking-widest opacity-80 uppercase">PT. Karyabhakti Manunggal MILL 2</p>
-                <h1 class="text-xl font-extrabold uppercase tracking-tighter">Production Monitoring DASHBOARD</h1>
+                <p class="text-[10px] font-bold tracking-[0.2em] opacity-80 uppercase leading-none mb-1">PT. Karyabhakti Manunggal MILL 2</p>
+                <h1 class="text-2xl font-black uppercase tracking-tight leading-none text-white">Production Monitoring Dashboard</h1>
             </div>
         </div>
         <div class="flex gap-6 items-center">
             <div class="text-right">
-                <div id="tanggal-hari-ini" class="text-[10px] font-bold opacity-80 uppercase tracking-widest mb-1 text-white">Memuat Tanggal...</div>
-                <div id="jam" class="bg-black/20 px-4 py-1 rounded-lg font-mono-industrial text-3xl leading-tight">00.00.00</div>
+                <div id="tanggal-hari-ini" class="text-[10px] font-bold uppercase tracking-widest mb-1 text-white opacity-80">06 JAN 2026</div>
+                <div id="jam" class="bg-black/30 px-5 py-1 rounded-xl font-mono-industrial text-3xl leading-tight border border-white/20 shadow-inner">00:00:00</div>
             </div>
-            <div class="bg-white text-slate-900 px-5 py-2 rounded-lg flex flex-col items-center min-w-[100px] shadow-md">
-                <span class="text-[10px] font-black text-slate-400 uppercase leading-none mb-1">Shift</span>
-                <div class="flex items-center gap-1">
-                    <span id="shift-num" class="text-2xl font-black leading-none">-</span>
-                    <span id="shift-name" class="text-[10px] font-bold text-slate-500 uppercase leading-none">(-)</span>
+            <div class="bg-white text-slate-900 px-6 py-2 rounded-2xl flex flex-col items-center min-w-[120px] shadow-lg">
+                <span class="text-[10px] font-black text-slate-500 uppercase leading-none mb-1.5">Shift</span>
+                <div class="flex items-center gap-1.5">
+                    <span id="shift-num" class="text-3xl font-black leading-none text-slate-900">-</span>
+                    <span id="shift-name" class="text-[11px] font-extrabold text-slate-400 uppercase leading-none">(-)</span>
                 </div>
             </div>
         </div>
     </header>
 
     <main class="flex-1 p-6 grid grid-cols-12 gap-6 overflow-hidden">
-        <div class="col-span-3 card-industrial p-8 flex flex-col items-center justify-between text-center relative overflow-hidden">
-            <div class="absolute top-0 left-0 w-full h-1 bg-slate-100"></div>
-            <h2 class="text-slate-400 font-bold text-[12px] uppercase tracking-[.2em]">Efficiency Engine</h2>
-            <div class="py-6">
-                <p class="text-slate-400 font-bold text-[10px] uppercase mb-1">Actual Output (Gross)</p>
-                <div class="flex flex-col items-center">
-                    <span id="meter-lari" class="text-8xl font-black tracking-tighter text-slate-800 leading-none">0.0</span>
-                    <span class="text-slate-400 font-bold text-xs mt-2 uppercase">Meter Lari</span>
-                </div>
+        
+        <div class="col-span-3 card-industrial p-8 flex flex-col items-center justify-around text-center relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-1.5 bg-slate-100"></div>
+            <h2 class="text-slate-900 font-bold text-[12px] uppercase tracking-[.3em]">Efficiency Engine</h2>
+            
+            <div class="flex flex-col items-center">
+                <p class="text-slate-900 font-bold text-[11px] uppercase mb-1 opacity-70">Actual Output (Gross)</p>
+                <span id="meter-lari" class="text-[110px] font-black tracking-tighter text-slate-900 leading-none">0.0</span>
+                <span class="text-slate-900 font-bold text-xs mt-2 uppercase">Meter Lari</span>
             </div>
+
+            <div id="emoji" class="text-[130px] filter drop-shadow-2xl animate-mood my-4 select-none">😐</div>
+
             <div class="w-full">
-                <p class="text-slate-400 font-bold text-[10px] uppercase mb-2">Target Achievement</p>
-                <div id="persen-teks" class="text-6xl font-black text-emerald-500 tracking-tighter">0%</div>
-            </div>
-            <div class="mt-4 flex flex-col items-center">
-                <div id="emoji" class="text-7xl mb-2">😐</div>
-                <div id="label-mood" class="text-[10px] font-black uppercase tracking-widest text-slate-400 italic">Awaiting Data</div>
+                <div id="persen-teks" class="text-8xl font-black text-emerald-500 tracking-tighter leading-none">0%</div>
+                <p id="label-mood" class="text-xs font-black uppercase tracking-[0.2em] text-slate-900 mt-3 italic">Awaiting Data</p>
             </div>
         </div>
 
         <div class="col-span-9 grid grid-rows-2 gap-6">
+            
             <div class="card-industrial p-6 flex flex-col h-full relative">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-slate-400 font-bold text-[12px] uppercase tracking-[.1em]">Production Trend / Hour (M')</h2>
-                    <div class="flex items-center gap-4">
-                        <div class="flex items-center gap-2">
-                            <span class="w-3 h-3 bg-[#124170] rounded-sm"></span>
-                            <span class="text-[9px] font-bold text-slate-500 uppercase">Machine</span>
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-slate-900 font-bold text-[13px] uppercase tracking-widest">Production Trend / Hour (M')</h2>
+                    <div class="flex items-center gap-6 bg-slate-50 px-5 py-2.5 rounded-xl border border-slate-100">
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-4 h-4 bg-[#124170] rounded-md"></span>
+                            <span class="text-[11px] font-black text-slate-900 uppercase">Machine</span>
                         </div>
-                        <div class="flex items-center gap-2">
-                            <span class="w-3 h-3 bg-[#10b981] rounded-sm"></span>
-                            <span class="text-[9px] font-bold text-slate-500 uppercase">Tally Nett</span>
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-4 h-4 bg-[#10b981] rounded-md"></span>
+                            <span class="text-[11px] font-black text-slate-900 uppercase">Tally Nett</span>
                         </div>
                     </div>
                 </div>
@@ -85,48 +116,274 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-3 gap-6">
-                <div class="card-industrial p-6 flex flex-col justify-between">
-                    <div>
-                        <h2 class="text-slate-400 font-bold text-[10px] uppercase tracking-widest mb-4">Knife Sharpness</h2>
-                        <div class="flex justify-between items-baseline">
-                            <span id="joints" class="text-6xl font-black text-slate-800">0</span>
-                            <span id="label-pisau" class="text-emerald-500 font-bold text-xl">100%</span>
+            <div class="grid grid-cols-12 gap-6">
+                <div class="col-span-3 card-industrial p-6 flex flex-col justify-between border-t-8 border-emerald-500">
+                    <p class="text-slate-900 font-bold text-[10px] uppercase tracking-widest mb-3">Knife Sharpness</p>
+                    <div class="flex justify-between items-end mb-2">
+                        <div class="flex flex-col">
+                            <span id="joints" class="text-6xl font-black text-slate-900 leading-none tracking-tighter">0</span>
+                            <span class="text-[11px] font-bold text-slate-900 uppercase mt-2 opacity-60">Joints Created</span>
                         </div>
-                        <p class="text-[9px] font-bold text-slate-400 uppercase mt-1">Joints Created</p>
+                        <span id="label-pisau" class="text-emerald-500 font-black text-3xl">100%</span>
                     </div>
-                    <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden mt-4">
-                        <div id="bar-pisau" class="bg-emerald-500 h-full w-full transition-all duration-500"></div>
+                    <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden border border-slate-200">
+                        <div id="bar-pisau" class="bg-emerald-500 h-full w-full transition-all duration-700"></div>
                     </div>
                 </div>
 
-                <div class="card-industrial p-6 flex flex-col justify-center border-l-[6px] border-l-blue-500">
-                    <h2 class="text-slate-400 font-bold text-[10px] uppercase tracking-widest mb-2">Target Gap</h2>
+                <div class="col-span-3 card-industrial p-6 flex flex-col justify-center border-l-[10px] border-blue-600">
+                    <p class="text-slate-900 font-bold text-[10px] uppercase tracking-widest mb-4 opacity-70">Target Gap</p>
                     <div class="flex items-baseline gap-2">
-                        <span id="sisa-target" class="text-6xl font-black text-blue-600">0</span>
-                        <span class="text-slate-400 font-bold text-xs uppercase">Mtr</span>
+                        <span id="sisa-target" class="text-7xl font-black text-blue-600 leading-none tracking-tighter">0</span>
+                        <span class="text-slate-900 font-black text-sm uppercase">Mtr</span>
                     </div>
-                    <p class="text-[9px] font-bold text-slate-400 uppercase">Objective: <span id="target-val" class="font-black">0</span> M'</p>
+                    <p class="text-[11px] font-bold text-slate-400 uppercase mt-3">Objective: <span id="target-val" class="text-slate-900 font-black">1500</span> M'</p>
                 </div>
 
-                <div id="status-card" class="bg-slate-900 p-6 flex flex-col items-center justify-center rounded-lg transition-all duration-300">
-                    <div id="status-light" class="w-3 h-3 bg-slate-600 rounded-full mb-4 shadow-lg transition-all duration-300"></div>
-                    <h2 class="text-slate-500 font-bold text-[10px] uppercase tracking-widest mb-2">Controller Status</h2>
-                    <div id="status-mesin" class="text-4xl font-black text-slate-600 tracking-tighter uppercase transition-colors duration-300">Standby</div>
+                <div class="col-span-3 card-industrial p-6 flex flex-col">
+                    <h2 class="text-slate-900 font-extrabold text-[12px] uppercase tracking-widest mb-4">Downtime Logs</h2>
+                    <div class="flex-1 overflow-hidden text-slate-900">
+                        <table class="w-full text-left">
+                            <thead class="border-b-2 border-slate-100">
+                                <tr>
+                                    <th class="font-extrabold text-[11px] pb-2 uppercase text-slate-400">Category</th>
+                                    <th class="font-extrabold text-[11px] pb-2 text-right uppercase text-slate-400">Dur</th>
+                                </tr>
+                            </thead>
+                            <tbody id="downtime-body" class="divide-y divide-slate-50">
+                                <tr>
+                                    <td class="py-3 text-[16px] font-black uppercase text-slate-900">-</td>
+                                    <td class="py-3 text-right text-[16px] font-black text-red-500">0m</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="status-card" class="col-span-3 status-running p-6 flex flex-col items-center justify-center rounded-2xl relative shadow-inner overflow-hidden">
+                    <div class="absolute top-0 right-0 p-4">
+                        <div id="status-light" class="w-4 h-4 bg-emerald-400 rounded-full shadow-[0_0_15px_rgba(52,211,153,1)] animate-light"></div>
+                    </div>
+                    <p class="text-slate-400 font-bold text-[11px] uppercase tracking-[0.2em] mb-2 opacity-60">System Status</p>
+                    <div id="status-mesin" class="text-5xl font-black text-emerald-400 tracking-tighter uppercase italic running-glow">Standby</div>
+                    <div class="mt-3 text-[9px] font-black text-slate-500 uppercase tracking-[0.3em]">Live Feed Active</div>
                 </div>
             </div>
         </div>
     </main>
 
-    <footer class="p-4 flex justify-between items-center text-[10px] font-bold text-slate-400 bg-slate-50 border-t border-slate-200 shrink-0">
-        <div class="flex gap-4">
-            <span class="bg-slate-200 px-2 py-0.5 rounded text-slate-600">FJ-CONTROL-SYS</span>
-            <span class="bg-slate-200 px-2 py-0.5 rounded text-slate-600">MILL 2 PS</span>
-            <span class="bg-slate-200 px-2 py-0.5 rounded text-slate-600">HMI V1.0</span>
+    <footer class="p-3 px-8 flex justify-between items-center bg-white border-t border-slate-200 shrink-0 z-10">
+        <div class="flex gap-3">
+            <span class="text-[10px] font-bold text-slate-900 uppercase bg-slate-100 px-4 py-1.5 rounded-full border border-slate-200">System: FJ-CTRL-V2</span>
+            <span class="text-[10px] font-bold text-slate-900 uppercase bg-slate-100 px-4 py-1.5 rounded-full border border-slate-200">Terminal: MILL 2 PS</span>
         </div>
-        <div class="tracking-[0.2em] text-[#124170] uppercase">Kiosk Mode Active</div>
+        <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 bg-red-600 rounded-full animate-pulse shadow-[0_0_10px_rgba(220,38,38,0.5)]"></span>
+                <span class="text-[10px] font-black text-slate-900 tracking-widest uppercase">Kiosk Mode Active</span>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/js/kiosk.js"></script>
+</body>
+</html> -->
+
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FJ Production Monitoring - Mill 2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Roboto+Mono:wght@700&display=swap" rel="stylesheet">
+    <style>
+        :root { --kbm-red: #d71920; --navy-dark: #124170; --slate-900: #0f172a; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; cursor: none; margin: 0; overflow: hidden; }
+        .header-red { background-color: var(--kbm-red); }
+        
+        .card-industrial { 
+            background: white; 
+            border: 1px solid #e2e8f0; 
+            border-radius: 16px; 
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 10px 15px -3px rgba(0, 0, 0, 0.03);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .font-mono-industrial { font-family: 'Roboto Mono', monospace; }
+
+        /* UPGRADE: Border Animation untuk Finishing Line */
+        @keyframes finish-glow {
+            0%, 100% { border-color: #2563eb; box-shadow: 0 0 5px rgba(37, 99, 235, 0.2); }
+            50% { border-color: #fbbf24; box-shadow: 0 0 20px rgba(251, 191, 36, 0.4); }
+        }
+        .near-target { animation: finish-glow 1.5s infinite; border-width: 4px !important; }
+
+        /* UPGRADE: Alert Pulse untuk Downtime */
+        @keyframes alert-bg {
+            0% { background-color: #0f172a; }
+            50% { background-color: #450a0a; }
+            100% { background-color: #0f172a; }
+        }
+        .status-critical { animation: alert-bg 1s infinite; }
+
+        .animate-mood { animation: subtle-bounce 4s infinite ease-in-out; }
+        @keyframes subtle-bounce {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-10px) scale(1.05); }
+        }
+
+        .running-glow { text-shadow: 0 0 15px rgba(52, 211, 153, 0.6); }
+        ::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="h-screen flex flex-col" onclick="toggleFullScreen()">
+
+    <header class="header-red text-white p-4 flex justify-between items-center shrink-0 shadow-2xl z-20">
+        <div class="flex items-center gap-5">
+            <div class="bg-white p-1.5 rounded-lg shadow-inner flex items-center justify-center admin-reset-trigger cursor-pointer" onclick="handleSecretReset(event)">
+                <img src="/images/kbm.png" class="h-10 w-auto object-contain" alt="Logo KBM">
+            </div>
+            <div>
+                <p class="text-[10px] font-bold tracking-[0.2em] opacity-80 uppercase leading-none mb-1">PT. Karyabhakti Manunggal MILL 2</p>
+                <h1 class="text-2xl font-black uppercase tracking-tight leading-none text-white">Production Monitoring Dashboard</h1>
+            </div>
+        </div>
+        <div class="flex gap-6 items-center">
+            <div class="text-right">
+                <div id="tanggal-hari-ini" class="text-[10px] font-bold uppercase tracking-widest mb-1 text-white opacity-80">06 JAN 2026</div>
+                <div id="jam" class="bg-black/30 px-5 py-1 rounded-xl font-mono-industrial text-3xl leading-tight border border-white/20">00:00:00</div>
+            </div>
+            <div class="bg-white text-slate-900 px-6 py-2 rounded-2xl flex flex-col items-center min-w-[120px] shadow-lg">
+                <span class="text-[10px] font-black text-slate-500 uppercase leading-none mb-1.5">Shift</span>
+                <div class="flex items-center gap-1.5">
+                    <span id="shift-num" class="text-3xl font-black leading-none text-slate-900">2</span>
+                    <span id="shift-name" class="text-[11px] font-extrabold text-slate-400 uppercase leading-none">(Malam)</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 p-6 grid grid-cols-12 gap-6 overflow-hidden">
+        
+        <div class="col-span-3 card-industrial p-8 flex flex-col items-center justify-around text-center border-t-8 border-slate-200">
+            <h2 class="text-slate-900 font-bold text-[12px] uppercase tracking-[.3em]">Efficiency Engine</h2>
+            
+            <div class="flex flex-col items-center">
+                <p class="text-slate-900 font-bold text-[11px] uppercase mb-1 opacity-70">Actual Output (Gross)</p>
+                <span id="meter-lari" class="text-[110px] font-black tracking-tighter text-slate-900 leading-none">0.0</span>
+                <span class="text-slate-900 font-bold text-xs mt-2 uppercase">Meter Lari</span>
+            </div>
+
+            <div id="emoji" class="text-[120px] filter drop-shadow-2xl animate-mood my-4 select-none">😐</div>
+
+            <div class="w-full bg-slate-50 p-4 rounded-2xl border border-slate-100 shadow-inner">
+                <p class="text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest">Est. Completion</p>
+                <div id="prediksi-selesai" class="text-2xl font-black text-slate-900">--:-- WIB</div>
+            </div>
+
+            <div class="w-full mt-4">
+                <div id="persen-teks" class="text-7xl font-black text-emerald-500 tracking-tighter leading-none">0%</div>
+                <p id="label-mood" class="text-xs font-black uppercase tracking-[0.2em] text-slate-900 mt-2 italic">Awaiting Data</p>
+            </div>
+        </div>
+
+        <div class="col-span-9 grid grid-rows-2 gap-6">
+            
+            <div class="card-industrial p-6 flex flex-col h-full">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-slate-900 font-bold text-[13px] uppercase tracking-widest">Production Trend / Hour (M')</h2>
+                    <div class="flex items-center gap-6 bg-slate-50 px-5 py-2.5 rounded-xl border border-slate-100">
+                        <div class="flex items-center gap-2.5 text-slate-900">
+                            <span class="w-4 h-4 bg-[#124170] rounded-md"></span>
+                            <span class="text-[11px] font-black uppercase">Machine</span>
+                        </div>
+                        <div class="flex items-center gap-2.5 text-slate-900">
+                            <span class="w-4 h-4 bg-[#10b981] rounded-md"></span>
+                            <span class="text-[11px] font-black uppercase">Tally Nett</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex-1 min-h-0">
+                    <canvas id="barChart"></canvas>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-12 gap-6">
+                <div class="col-span-3 card-industrial p-6 flex flex-col justify-between border-t-8 border-emerald-500">
+                    <p class="text-slate-900 font-bold text-[10px] uppercase tracking-widest mb-3">Knife Sharpness</p>
+                    <div class="flex justify-between items-end mb-2">
+                        <div class="flex flex-col">
+                            <span id="joints" class="text-6xl font-black text-slate-900 leading-none tracking-tighter">0</span>
+                            <span class="text-[11px] font-bold text-slate-900 uppercase mt-2 opacity-60">Joints Created</span>
+                        </div>
+                        <span id="label-pisau" class="text-emerald-500 font-black text-3xl">100%</span>
+                    </div>
+                    <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden border border-slate-200">
+                        <div id="bar-pisau" class="bg-emerald-500 h-full w-full transition-all duration-700"></div>
+                    </div>
+                </div>
+
+                <div id="card-target" class="col-span-3 card-industrial p-6 flex flex-col justify-center border-l-[10px] border-blue-600">
+                    <p class="text-slate-900 font-bold text-[10px] uppercase tracking-widest mb-4 opacity-70">Target Gap</p>
+                    <div class="flex items-baseline gap-2">
+                        <span id="sisa-target" class="text-7xl font-black text-blue-600 leading-none tracking-tighter">0</span>
+                        <span class="text-slate-900 font-black text-sm uppercase">Mtr</span>
+                    </div>
+                    <p class="text-[11px] font-bold text-slate-400 uppercase mt-3">Objective: <span id="target-val" class="text-slate-900 font-black">1500</span> M'</p>
+                </div>
+
+                <div class="col-span-3 card-industrial p-6 flex flex-col">
+                    <h2 class="text-slate-900 font-extrabold text-[12px] uppercase tracking-widest mb-4">Downtime Logs</h2>
+                    <div class="flex-1 overflow-hidden">
+                        <table class="w-full text-left">
+                            <thead class="border-b-2 border-slate-100">
+                                <tr>
+                                    <th class="font-extrabold text-[11px] pb-2 uppercase text-slate-400">Category</th>
+                                    <th class="font-extrabold text-[11px] pb-2 text-right uppercase text-slate-400">Dur</th>
+                                </tr>
+                            </thead>
+                            <tbody id="downtime-body" class="divide-y divide-slate-50">
+                                <tr>
+                                    <td class="py-3 text-[16px] font-black uppercase text-slate-900">-</td>
+                                    <td class="py-3 text-right text-[16px] font-black text-red-500">0m</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="status-card" class="col-span-3 bg-[#0f172a] p-6 flex flex-col items-center justify-center rounded-2xl relative shadow-inner overflow-hidden">
+                    <div class="absolute top-0 right-0 p-4">
+                        <div id="status-light" class="w-4 h-4 bg-emerald-400 rounded-full shadow-[0_0_15px_rgba(52,211,153,1)]"></div>
+                    </div>
+                    <p class="text-slate-400 font-bold text-[11px] uppercase tracking-[0.2em] mb-2 opacity-60">System Status</p>
+                    <div id="status-mesin" class="text-5xl font-black text-emerald-400 tracking-tighter uppercase italic running-glow">Running</div>
+                    <div class="mt-3 text-[9px] font-black text-slate-500 uppercase tracking-[0.3em]">Live Feed Active</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="p-3 px-8 flex justify-between items-center bg-white border-t border-slate-200 shrink-0 z-10 text-slate-900">
+        <div class="flex gap-3">
+            <span class="text-[10px] font-bold uppercase bg-slate-100 px-4 py-1.5 rounded-full border border-slate-200">System: FJ-CTRL-V2</span>
+            <span class="text-[10px] font-bold uppercase bg-slate-100 px-4 py-1.5 rounded-full border border-slate-200">Terminal: MILL 2 PS</span>
+        </div>
+        <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 bg-red-600 rounded-full animate-pulse shadow-[0_0_10px_rgba(220,38,38,0.5)]"></span>
+                <span class="text-[10px] font-black tracking-widest uppercase">Kiosk Mode Active</span>
+            </div>
+        </div>
     </footer>
 
     <script src="/js/kiosk.js"></script>
 </body>
 </html>
+
+
