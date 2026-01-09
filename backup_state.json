@@ -1,4 +1,9 @@
 {
-  "meter_lari": 0,
-  "joint_count": 0
+  "meter_lari": 4582.999999999845,
+  "joint_count": 4011,
+  "lastSensorStatus": true,
+  "machinePower": true,
+  "isDowntime": false,
+  "lastActiveTime": 1767859059440,
+  "lastSensor": true
 }

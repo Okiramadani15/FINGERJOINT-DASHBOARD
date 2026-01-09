@@ -1,113 +1,124 @@
 // 
 
+/**
+ * ======================================================
+ * HARDWARE SERVICE – MODBUS / SIMULATION
+ * ======================================================
+ * - Auto reconnect
+ * - Simulation & Real hardware share same interface
+ * - NEVER throw error to app.js
+ * - Safe for production & field installation
+ */
+
 const ModbusRTU = require("modbus-serial");
 require("dotenv").config();
 
-// ================== MODBUS CLIENT ==================
+// ================== CONFIG ==================
+const MODBUS_PORT = process.env.MODBUS_PORT;
+const MODBUS_BAUD = parseInt(process.env.MODBUS_BAUD || "9600");
+const MODBUS_ID = parseInt(process.env.MODBUS_ID || "1");
+
+const RECONNECT_INTERVAL = 8000; // ms
+const SIM_PULSE_ON = 800;        // ms
+const SIM_PULSE_OFF = 2500;      // ms
+
+// ================== INTERNAL STATE ==================
 const client = new ModbusRTU();
 
-// ================== GLOBAL STATE ==================
-let isSimulation = true;
-let isConnecting = false;
+const state = {
+    mode: "SIM", // SIM | REAL
+    status: "INIT", // INIT | CONNECTING | CONNECTED | DISCONNECTED
+    lastError: null,
+    lastSuccessRead: null,
+};
 
-// Simulation state
-let simStatus = false;
-let nextActionTime = Date.now();
+// ================== SIMULATION STATE ==================
+let simPulse = false;
+let nextSimToggle = Date.now();
 
-// Debounce state
-let lastStableValue = false;
-let lastRawValue = false;
-let lastChangeTime = Date.now();
+// ================== INIT ==================
+function initHardware() {
+    if (!MODBUS_PORT || MODBUS_PORT === "SIM") {
+        state.mode = "SIM";
+        state.status = "CONNECTED";
+        console.log("🧪 Hardware Mode: SIMULATION");
+        return;
+    }
 
-// Debounce config (ms)
-const DEBOUNCE_TIME = 50;
+    state.mode = "REAL";
+    console.log("🔌 Hardware Mode: REAL");
+    startReconnectLoop();
+}
 
-// ================== INIT HARDWARE ==================
-async function initHardware() {
-    if (isConnecting) return;
-    isConnecting = true;
+// ================== RECONNECT LOOP ==================
+function startReconnectLoop() {
+    setInterval(async () => {
+        if (state.status === "CONNECTED") return;
 
-    try {
-        if (!process.env.MODBUS_PORT || process.env.MODBUS_PORT === "SIM") {
-            isSimulation = true;
-            console.log("⚠️ Hardware Mode: SIMULATION");
-            isConnecting = false;
-            return;
+        try {
+            state.status = "CONNECTING";
+            console.log(`🔄 Connecting to Modbus (${MODBUS_PORT})...`);
+
+            await client.connectRTUBuffered(MODBUS_PORT, {
+                baudRate: MODBUS_BAUD,
+            });
+
+            client.setID(MODBUS_ID);
+            client.setTimeout(1000);
+
+            state.status = "CONNECTED";
+            state.lastError = null;
+
+            console.log("✅ Modbus CONNECTED");
+
+        } catch (err) {
+            state.status = "DISCONNECTED";
+            state.lastError = err.message;
+            console.warn("⚠️ Modbus connect failed, retrying...");
         }
-
-        console.log(`🔄 Connecting Modbus RTU → ${process.env.MODBUS_PORT}`);
-        await client.connectRTUBuffered(process.env.MODBUS_PORT, {
-            baudRate: 9600
-        });
-
-        client.setID(1);
-        client.setTimeout(1000);
-
-        isSimulation = false;
-        console.log("✅ Modbus Connected (R4DIF08)");
-    } catch (err) {
-        isSimulation = true;
-        console.log("❌ Modbus Connection Failed, retry in 10s");
-        setTimeout(initHardware, 10000);
-    } finally {
-        isConnecting = false;
-    }
-}
-
-// ================== SIMULATION ==================
-function readSimulationInputs() {
-    const now = Date.now();
-
-    if (now > nextActionTime) {
-        simStatus = !simStatus;
-        nextActionTime = now + (simStatus ? 800 : 2500);
-    }
-
-    // [0] joint sensor, [7] power ON
-    return [simStatus, false, false, false, false, false, false, true];
-}
-
-// ================== DEBOUNCE LOGIC ==================
-function debounceSignal(rawValue) {
-    const now = Date.now();
-
-    if (rawValue !== lastRawValue) {
-        lastChangeTime = now;
-        lastRawValue = rawValue;
-    }
-
-    if ((now - lastChangeTime) >= DEBOUNCE_TIME) {
-        lastStableValue = rawValue;
-    }
-
-    return lastStableValue;
+    }, RECONNECT_INTERVAL);
 }
 
 // ================== READ INPUTS ==================
 async function readInputs() {
-    // ---- SIMULATION ----
-    if (isSimulation) {
-        const simInputs = readSimulationInputs();
-        simInputs[0] = debounceSignal(simInputs[0]);
-        return simInputs;
+    // ---------- SIMULATION ----------
+    if (state.mode === "SIM") {
+        const now = Date.now();
+        if (now >= nextSimToggle) {
+            simPulse = !simPulse;
+            nextSimToggle = now + (simPulse ? SIM_PULSE_ON : SIM_PULSE_OFF);
+        }
+
+        // INPUT MAP (8 bit)
+        // [0] Joint sensor (pulse)
+        // [7] Machine power (always ON in SIM)
+        return [
+            simPulse, // 0
+            false,    // 1
+            false,    // 2
+            false,    // 3
+            false,    // 4
+            false,    // 5
+            false,    // 6
+            true      // 7 (power ON)
+        ];
     }
 
-    // ---- REAL HARDWARE ----
+    // ---------- REAL HARDWARE ----------
     try {
-        if (!client.isOpen) {
-            await initHardware();
+        if (!client.isOpen || state.status !== "CONNECTED") {
+            state.status = "DISCONNECTED";
             return null;
         }
 
         const res = await client.readDiscreteInputs(0, 8);
-        const data = res.data;
+        state.lastSuccessRead = Date.now();
+        return res.data;
 
-        // Apply debounce ONLY to joint sensor
-        data[0] = debounceSignal(data[0]);
-
-        return data;
     } catch (err) {
-        console.log("❌ Modbus Read Error → reconnecting...");
+        state.status = "DISCONNECTED";
+        state.lastError = err.message;
+        console.error("❌ Modbus read error");
         return null;
     }
 }
@@ -116,5 +127,5 @@ async function readInputs() {
 module.exports = {
     initHardware,
     readInputs,
-    client
+    hardwareState: state,
 };
