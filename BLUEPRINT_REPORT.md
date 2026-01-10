@@ -44,7 +44,9 @@ Berikut adalah daftar perbaikan teknis yang baru saja diimplementasikan untuk me
 | **Debouncing** | Tidak ada, rentan *double count*. | **Software Debounce (2000ms)**. | Data produksi lebih akurat, bebas dari *glitch* sensor. |
 | **Keamanan Reset** | Validasi PIN di Frontend (tidak aman). | **Validasi PIN di Backend**. | PIN tidak bisa diintip lewat "Inspect Element" browser. |
 | **Error Handling** | Hanya `console.log`. | **Winston Logger** (File & Console). | Riwayat error tersimpan rapi untuk audit & debugging. |
-| **Kalkulasi OEE** | Tersebar di Frontend & Backend. | **Centralized OEE Service**. | Data konsisten antara dashboard dan laporan database. |
+| **Kalkulasi OEE** | 4x query DB terpisah per siklus. | **1x Query Efisien (CTE)**. | Beban database berkurang signifikan, kalkulasi lebih cepat. |
+| **Akurasi OEE** | Kalkulasi berbasis harian. | **Kalkulasi berbasis Shift**. | Data OEE kini 100% akurat sesuai shift yang berjalan. |
+| **Logika Standby**| Menampilkan data shift terakhir. | **Emit Status "Standby"**. | HMI secara eksplisit menampilkan status standby, tidak ada data usang. |
 | **Database** | Query OEE salah tabel. | **Fixed Query Logic**. | Data downtime kini terbaca dengan benar oleh engine OEE. |
 
 ## 4. Struktur Kode & Teknologi

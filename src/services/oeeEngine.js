@@ -1,73 +1,87 @@
 const pool = require('../../config/db');
 
-/**
- * FINAL OEE ENGINE
- * Industrial-safe & upgrade-ready
- */
 async function calculateOEE({ machineId, shiftNumber, date }) {
-    // ========================
-    // 1. Planned Production Time
-    // ========================
-    const plannedMinutes = 8 * 60; // 1 shift = 8 jam (FINAL FIXED)
+    try {
+        const query = `
+            WITH TargetData AS (
+                SELECT
+                    target_meter_lari,
+                    target_jumlah_joint
+                FROM production_targets
+                WHERE effective_date = $1
+                ORDER BY created_at DESC
+                LIMIT 1
+            ),
+            DowntimeData AS (
+                SELECT COALESCE(SUM(duration_sec) / 60.0, 0) AS total_downtime_minutes
+                FROM machine_downtime_logs
+                WHERE machine_id = $2 AND shift_number = $3 AND DATE(start_time) = $1
+            ),
+            ProductionData AS (
+                SELECT
+                    COALESCE(SUM(meter_lari), 0) AS actual_production,
+                    COUNT(*) AS total_joints
+                FROM production_logs
+                WHERE machine_id = $2 AND shift_number = $3 AND DATE(timestamp) = $1
+            )
+            SELECT
+                t.target_meter_lari,
+                t.target_jumlah_joint,
+                d.total_downtime_minutes,
+                p.actual_production,
+                p.total_joints
+            FROM TargetData t, DowntimeData d, ProductionData p;
+        `;
 
-    // ========================
-    // 2. Downtime
-    // ========================
-    const downtimeRes = await pool.query(`
-        SELECT COALESCE(SUM(duration_sec) / 60, 0) AS downtime
-        FROM machine_downtime_logs
-        WHERE machine_id = $1
-        AND DATE(start_time) = $2
-        AND shift_number = $3
-    `, [machineId, date, shiftNumber]);
+        const result = await pool.query(query, [date, machineId, shiftNumber]);
 
-    const downtimeMinutes = parseFloat(downtimeRes.rows[0].downtime);
-    const operatingTime = Math.max(plannedMinutes - downtimeMinutes, 1);
+        if (result.rowCount === 0 || !result.rows[0].actual_production || !result.rows[0].total_joints) {
+            console.warn(`⚠️ No production data found for Machine ${machineId}, Shift ${shiftNumber} on ${date}`);
+            return emptyOEE();
+        }
 
-    const availability = operatingTime / plannedMinutes;
+        const {
+            target_meter_lari,
+            target_jumlah_joint,
+            total_downtime_minutes,
+            actual_production,
+            total_joints
+        } = result.rows[0];
 
-    // ========================
-    // 3. Performance
-    // ========================
-    const actualRes = await pool.query(`
-        SELECT COALESCE(SUM(meter_lari),0) AS actual
-        FROM production_logs
-        WHERE machine_id = $1
-        AND DATE(timestamp) = $2
-        AND shift_number = $3
-    `, [machineId, date, shiftNumber]);
+        // Asumsi total waktu shift adalah 8 jam (480 menit)
+        const totalShiftMinutes = 480;
+        const actualRuntime = Math.max(0, totalShiftMinutes - total_downtime_minutes);
 
-    const targetRes = await pool.query(`
-        SELECT target_meter_lari
-        FROM production_targets
-        WHERE effective_date = $1
-        LIMIT 1
-    `, [date]);
+        // OEE Calculations
+        const availability = totalShiftMinutes > 0 ? (actualRuntime / totalShiftMinutes) : 0;
+        const performance = target_meter_lari > 0 ? (actual_production / target_meter_lari) : 0;
+        const quality = 1; // Asumsi 100% quality untuk sekarang
 
-    const actual = parseFloat(actualRes.rows[0].actual);
-    const target = targetRes.rows[0]?.target_meter_lari || 1;
+        const oee = availability * performance * quality;
 
-    const performance = actual / target;
+        return {
+            A: toPercent(availability),
+            P: toPercent(performance),
+            Q: toPercent(quality),
+            OEE: toPercent(oee),
+            actual: actual_production || 0,
+            joints: total_joints || 0,
+        };
 
-    // ========================
-    // 4. Quality
-    // ========================
-    const quality = 1.0; // FINAL (no reject yet)
-
-    // ========================
-    // 5. OEE
-    // ========================
-    const oee = availability * performance * quality;
-
-    return {
-        availability: +(availability * 100).toFixed(2),
-        performance: +(performance * 100).toFixed(2),
-        quality: +(quality * 100).toFixed(2),
-        oee: +(oee * 100).toFixed(2),
-        actual,
-        target,
-        downtimeMinutes
-    };
+    } catch (err) {
+        console.error('❌ OEE calculation error:', err.message);
+        return emptyOEE();
+    }
 }
 
-module.exports = { calculateOEE };
+function toPercent(value) {
+    return parseFloat((value * 100).toFixed(1));
+}
+
+function emptyOEE() {
+    return { A: 0, P: 0, Q: 0, OEE: 0, actual: 0, joints: 0 };
+}
+
+module.exports = {
+    calculateOEE
+};

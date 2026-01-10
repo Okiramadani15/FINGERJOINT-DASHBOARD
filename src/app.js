@@ -5,237 +5,152 @@ const { Server } = require('socket.io');
 const path = require('path');
 
 const pool = require('../config/db');
-const { initHardware, readInputs } = require('./hardware');
 const { getShiftInfo } = require('./utils/shiftManager');
-const { saveState, loadState } = require('./utils/persistence');
-const { handlePowerState } = require('./services/downtimeEngine');
 const { calculateOEE } = require('./services/oeeEngine');
-const logger = require('./utils/logger');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
-const PORT = process.env.PORT || 3001;
 
-app.use(express.json());
-app.use(express.static(path.resolve(__dirname, '../public')));
+const PORT = process.env.PORT || 3002;
+const MACHINE_ID = '1';
 
-/* =========================
-   STATE
-========================= */
-let session = { ...loadState(), lastSensor: false, isDowntime: false };
+app.use(express.static(path.join(__dirname, '../public')));
+app.use(express.json()); // Middleware untuk parsing JSON
 
-/* =========================
-   ROUTE
-========================= */
-app.get('/', (_, res) =>
-    res.sendFile(path.join(__dirname, '../public/index.html'))
-);
+// Endpoint untuk reset data
+app.post('/reset-data', async (req, res) => {
+    const { password } = req.body;
 
-/* =========================
-   BROADCAST PRODUKSI & OEE
-========================= */
-async function broadcast() {
+    // Kata sandi sederhana, bisa diganti di .env
+    if (password !== (process.env.RESET_PASSWORD || 'kbmjaya')) {
+        return res.status(401).json({ message: 'Kata sandi salah.' });
+    }
+
     try {
-        const shift = getShiftInfo();
-        const shiftNum = parseInt(shift.shift) || 1;
-        const today = new Date().toISOString().slice(0,10);
-
-        // 1. Get OEE Data (Single Source of Truth)
-        const oeeData = await calculateOEE({ machineId: 1, shiftNumber: shiftNum, date: today });
+        console.log('🔥 Mereset data produksi untuk hari ini...');
         
-        // 2. Production Data (from OEE)
-        const actual = oeeData.actual;
-        const target = oeeData.target;
-        const efficiency = oeeData.performance; // Use Performance from OEE as Efficiency
-        const joints = await getJointCount(shiftNum); // Helper needed or query directly
+        // Hapus data dari tabel-tabel terkait
+        await pool.query("DELETE FROM production_logs WHERE DATE(timestamp) = CURRENT_DATE");
+        await pool.query("DELETE FROM tally_logs WHERE tanggal = CURRENT_DATE");
+        await pool.query("DELETE FROM target_gap_per_shift WHERE date = CURRENT_DATE");
 
-        // 3. Trend Data
-        // Handle shift crossing midnight for trend if needed, currently simplistic
-        const trendRes = await pool.query(`
-            SELECT EXTRACT(HOUR FROM timestamp) AS jam, SUM(meter_lari) AS meter
+        console.log('✅ Data berhasil direset.');
+
+        // Broadcast update setelah reset
+        broadcast();
+
+        res.status(200).json({ message: 'Data produksi hari ini telah berhasil direset.' });
+    } catch (error) {
+        console.error('❌ Gagal mereset data:', error);
+        res.status(500).json({ message: 'Terjadi kesalahan pada server.' });
+    }
+});
+
+async function broadcast() {
+    const shift = getShiftInfo();
+    
+    if (!shift.isOperational) {
+        io.emit('statusUpdate', {
+            shift: shift.name,
+            isOperational: false,
+            message: 'Mesin dalam mode standby di luar jam kerja.'
+        });
+        return;
+    }
+
+    const date = new Date().toISOString().slice(0,10);
+
+    const oee = await calculateOEE({
+        machineId: MACHINE_ID,
+        shiftNumber: shift.shift,
+        date
+    });
+
+    const trendRes = await pool.query(`
+        SELECT 
+            hour,
+            SUM(machine_data) AS machine,
+            SUM(tally_data) AS tally
+        FROM (
+            SELECT 
+                EXTRACT(HOUR FROM timestamp) AS hour,
+                meter_lari AS machine_data,
+                0 AS tally_data
             FROM production_logs
             WHERE DATE(timestamp) = CURRENT_DATE
-            AND shift_number = $1
-            GROUP BY jam
-        `, [shiftNum]);
-
-        const trend = Array(24).fill(0); // Support 24 hours
-        trendRes.rows.forEach(r => {
-            const h = parseInt(r.jam);
-            if (h >= 0 && h < 24) trend[h] = Number(r.meter);
-        });
-        
-        // Slice trend based on shift to make it cleaner for frontend chart?
-        // Frontend expects 17 data points (07-23). Let's keep it simple for now or adjust frontend.
-        // For compatibility with current frontend hardcoded 07-23:
-        const trendFrontend = Array(17).fill(0);
-        for(let i=0; i<17; i++) {
-            trendFrontend[i] = trend[i+7] || 0;
-        }
-
-        // Emit Production
-        io.emit('productionUpdate', {
-            current: actual,
-            target,
-            efficiency,
-            joints,
-            trendMesin: trendFrontend, // Keep compatibility
-            trendTally: trendFrontend,
-            shift,
-            isDowntime: session.isDowntime
-        });
-
-        // Emit OEE
-        io.emit('oeeUpdate', oeeData);
-
-    } catch (err) {
-        console.error('❌ Broadcast Error:', err.message);
-    }
-}
-
-async function getJointCount(shiftNum) {
-    const res = await pool.query(`
-        SELECT COALESCE(SUM(joint_count),0) AS joints
-        FROM production_logs
-        WHERE DATE(timestamp) = CURRENT_DATE
-        AND shift_number = $1
-    `, [shiftNum]);
-    return Number(res.rows[0].joints);
-}
-
-/* =========================
-   DEBOUNCE STATE
-========================= */
-let lastProductionTime = 0;
-const MIN_PRODUCTION_INTERVAL = 2000; // ms (Mencegah double count dalam 2 detik)
-
-/* =========================
-   SOCKET CONNECTION
-========================= */
-io.on('connection', socket => {
-    socket.emit('sensorStatus', session.lastSensor ? 'connected' : 'disconnected');
-    broadcast(); // Send initial data
-
-    socket.on('requestReset', async (pin) => {
-        // SECURITY: Validasi PIN di Backend
-        const SUPERVISOR_PIN = process.env.SUPERVISOR_PIN || '1234';
-        
-        if (pin !== SUPERVISOR_PIN) {
-            logger.warn(`Percobaan reset gagal: PIN salah (${pin})`);
-            socket.emit('resetError', 'PIN Salah!');
-            return;
-        }
-
-        try {
-            await pool.query(`DELETE FROM production_logs WHERE DATE(timestamp)=CURRENT_DATE`);
-            logger.info('Reset produksi berhasil dilakukan oleh Supervisor');
-            io.emit('resetDone');
-            broadcast();
-        } catch (err) {
-            logger.error(`Reset error: ${err.message}`);
-        }
-    });
-});
-
-/* =========================
-   SENSOR LOOP
-========================= */
-server.listen(PORT, async () => {
-    logger.info(`📡 RUNNING http://localhost:${PORT}`);
-    await initHardware();
-
-    // Loop Sensor: 500ms (Responsive enough)
-    setInterval(async () => {
-        try {
-            const inputs = await readInputs();
-            if(!inputs){
-                io.emit('sensorStatus', 'disconnected');
-                return;
-            }
-
-            // Only emit if status changes to reduce traffic
-            // io.emit('sensorStatus', 'connected'); // Client assumes connected if receiving updates
-
-            const power = inputs[7];
-            const isDowntime = !power;
             
-            // Update Session
-            if (session.isDowntime !== isDowntime) {
-                session.isDowntime = isDowntime;
-                broadcast(); // Immediate update on state change
-            }
+            UNION ALL
+            
+            SELECT 
+                jam_ke AS hour,
+                0 AS machine_data,
+                meter_lari AS tally_data
+            FROM tally_logs
+            WHERE tanggal = CURRENT_DATE
+        ) combined_data
+        GROUP BY hour
+        ORDER BY hour
+    `);
 
-            await handlePowerState({
-                machineId: 1,
-                shiftNumber: parseInt(getShiftInfo().shift) || 1,
-                isPowerOn: power
-            });
+    const machineArr = Array(17).fill(0);
+    const tallyArr = Array(17).fill(0);
 
-            // Production Trigger with Debounce (Time-based)
-            const now = Date.now();
-            if(power && inputs[0] && !session.lastSensor){
-                if (now - lastProductionTime >= MIN_PRODUCTION_INTERVAL) {
-                    await pool.query(`
-                        INSERT INTO production_logs
-                        (machine_id, meter_lari, joint_count, shift_number)
-                        VALUES (1, 1.2, 1, $1)
-                    `, [parseInt(getShiftInfo().shift)]);
-                    
-                    lastProductionTime = now;
-                    broadcast(); // Immediate update on production
-                } else {
-                    logger.warn('Ignored rapid sensor pulse (Debounced)');
-                }
-            }
-
-            session.lastSensor = inputs[0];
-            // saveState(session); // REMOVED: Not needed for DB-based app
-
-        } catch(e){
-            logger.error(`SENSOR ERROR: ${e.message}`);
+    trendRes.rows.forEach(r => {
+        const idx = r.hour - 7;
+        if (idx >= 0 && idx < 17) {
+            machineArr[idx] = Number(r.machine || 0);
+            tallyArr[idx] = Number(r.tally || 0);
         }
-    }, 500); // Faster polling for sensor accuracy
-
-    // Periodic Broadcast (Keep UI fresh)
-    setInterval(() => broadcast(), 5000); 
-});
-
-server.on('error', (err) => {
-    if (err.code === 'EADDRINUSE') {
-        logger.error(`❌ Port ${PORT} is already in use! Please kill the process using this port.`);
-        process.exit(1);
-    } else {
-        logger.error(`❌ Server error: ${err.message}`);
-    }
-});
-
-/* =========================
-   GRACEFUL SHUTDOWN
-========================= */
-const shutdown = (signal) => {
-    logger.info(`${signal} received. Closing server...`);
-    
-    // Force exit after 3s if stuck
-    setTimeout(() => {
-        logger.error('Force shutting down due to timeout...');
-        process.exit(1);
-    }, 3000);
-
-    // Close Socket.io first to disconnect clients
-    io.close(() => {
-        server.close(() => {
-            logger.info('HTTP server closed.');
-            pool.end(() => {
-                logger.info('Database connection closed.');
-                process.exit(0);
-            });
-        });
     });
-};
 
-process.on('SIGTERM', () => shutdown('SIGTERM'));
-process.on('SIGINT', () => shutdown('SIGINT'));
+    console.log('📊 Data OEE:', {
+        current: oee.actual,
+        efficiency: oee.P,
+        joints: oee.joints,
+        trendMachine: machineArr,
+        trendTally: tallyArr
+    });
 
-// Handle Nodemon Restart Signal
-process.once('SIGUSR2', () => shutdown('SIGUSR2'));
+    const today = new Date();
+    const tanggalFormatted = today.toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+    });
+
+    const targetGapRes = await pool.query(`
+        SELECT * 
+        FROM target_gap_per_shift 
+        WHERE date = CURRENT_DATE AND shift_number = $1
+    `, [shift.shift]);
+
+    const targetGap = targetGapRes.rows[0] || {};
+
+    io.emit('productionUpdate', {
+        current: oee.actual,
+        efficiency: oee.P,
+        joints: oee.joints,
+        trendMachine: machineArr,
+        trendTally: tallyArr,
+        shift: shift.shift,
+        shiftName: shift.name,
+        tanggal: tanggalFormatted,
+        targetGap: {
+            target_meter: parseFloat(targetGap.target_meter || 0),
+            actual_meter: parseFloat(targetGap.actual_meter || 0),
+            gap_meter: parseFloat(targetGap.gap_meter || 0),
+            achievement_percentage: parseFloat(targetGap.achievement_percentage || 0)
+        }
+    });
+
+    io.emit('oeeUpdate', oee);
+}
+
+setInterval(broadcast, 5000);
+
+io.on('connection', () => broadcast());
+
+server.listen(PORT, () =>
+    console.log(`🚀 Dashboard running on port ${PORT}`)
+);
