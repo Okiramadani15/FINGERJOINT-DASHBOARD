@@ -23,7 +23,7 @@ app.post('/reset-data', async (req, res) => {
     const { password } = req.body;
 
     // Kata sandi sederhana, bisa diganti di .env
-    if (password !== (process.env.RESET_PASSWORD || 'kbmjaya')) {
+    if (password !== (process.env.RESET_PASSWORD || '1234')) {
         return res.status(401).json({ message: 'Kata sandi salah.' });
     }
 
@@ -34,6 +34,45 @@ app.post('/reset-data', async (req, res) => {
         await pool.query("DELETE FROM production_logs WHERE DATE(timestamp) = CURRENT_DATE");
         await pool.query("DELETE FROM tally_logs WHERE tanggal = CURRENT_DATE");
         await pool.query("DELETE FROM target_gap_per_shift WHERE date = CURRENT_DATE");
+
+        const cekTarget = await pool.query("SELECT 1 FROM production_targets WHERE effective_date = CURRENT_DATE LIMIT 1");
+        if (cekTarget.rowCount === 0) {
+            await pool.query(
+                "INSERT INTO production_targets (target_name, target_value, unit, target_meter_lari, target_jumlah_joint, effective_date) VALUES ($1,$2,$3,$4,$5,CURRENT_DATE)",
+                ['Target Harian', 100, 'meter', 100, 200]
+            );
+        }
+
+        const s = getShiftInfo();
+        const shiftNo = s.shift === '-' ? 1 : s.shift;
+        await pool.query(
+            "INSERT INTO production_logs (machine_id, shift_number, operator_name, meter_lari, joint_count, lebar_kayu, tebal_kayu, timestamp) VALUES ($1,$2,$3,$4,$5,$6,$7,NOW())",
+            [1, shiftNo, 'Operator Reset', 3.5, 5, 20, 5]
+        );
+        const jam_ke = new Date().getHours() - 6;
+        if (jam_ke >= 1 && jam_ke <= 17) {
+            await pool.query(
+                "INSERT INTO tally_logs (jam_ke, meter_lari, tanggal) VALUES ($1,$2,CURRENT_DATE) ON CONFLICT (jam_ke, tanggal) DO UPDATE SET meter_lari = tally_logs.meter_lari + EXCLUDED.meter_lari",
+                [jam_ke, 1.2]
+            );
+        }
+
+        const tRes = await pool.query("SELECT target_meter_lari, target_jumlah_joint FROM production_targets WHERE effective_date = CURRENT_DATE ORDER BY created_at DESC LIMIT 1");
+        const targetMeter = parseFloat(tRes.rows[0].target_meter_lari || 0);
+        const targetJoints = parseFloat(tRes.rows[0].target_jumlah_joint || 0);
+        const totalShifts = 2;
+        const targetPerShiftMeter = targetMeter / totalShifts;
+        const targetPerShiftJoints = targetJoints / totalShifts;
+        const aRes = await pool.query("SELECT COALESCE(SUM(meter_lari),0) AS am, COALESCE(SUM(joint_count),0) AS aj FROM production_logs WHERE DATE(timestamp) = CURRENT_DATE AND shift_number = $1", [shiftNo]);
+        const actualMeter = parseFloat(aRes.rows[0].am || 0);
+        const actualJoints = parseFloat(aRes.rows[0].aj || 0);
+        const gapMeter = targetPerShiftMeter - actualMeter;
+        const gapJoints = targetPerShiftJoints - actualJoints;
+        const achievePct = targetPerShiftMeter > 0 ? (actualMeter / targetPerShiftMeter) * 100 : 0;
+        await pool.query(
+            "INSERT INTO target_gap_per_shift (shift_number, target_meter, actual_meter, gap_meter, target_joints, actual_joints, gap_joints, achievement_percentage, date) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,CURRENT_DATE) ON CONFLICT (shift_number, date) DO UPDATE SET target_meter=$2, actual_meter=$3, gap_meter=$4, target_joints=$5, actual_joints=$6, gap_joints=$7, achievement_percentage=$8, updated_at=CURRENT_TIMESTAMP",
+            [shiftNo, targetPerShiftMeter, actualMeter, gapMeter, targetPerShiftJoints, actualJoints, gapJoints, achievePct]
+        );
 
         console.log('✅ Data berhasil direset.');
 
@@ -59,7 +98,7 @@ async function broadcast() {
         return;
     }
 
-    const date = new Date().toISOString().slice(0,10);
+    const date = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD (local)
 
     const oee = await calculateOEE({
         machineId: MACHINE_ID,
@@ -124,9 +163,9 @@ async function broadcast() {
         FROM target_gap_per_shift 
         WHERE date = CURRENT_DATE AND shift_number = $1
     `, [shift.shift]);
-
+ 
     const targetGap = targetGapRes.rows[0] || {};
-
+ 
     io.emit('productionUpdate', {
         current: oee.actual,
         efficiency: oee.P,
@@ -140,7 +179,10 @@ async function broadcast() {
             target_meter: parseFloat(targetGap.target_meter || 0),
             actual_meter: parseFloat(targetGap.actual_meter || 0),
             gap_meter: parseFloat(targetGap.gap_meter || 0),
-            achievement_percentage: parseFloat(targetGap.achievement_percentage || 0)
+            achievement_percentage: parseFloat(targetGap.achievement_percentage || 0),
+            target_joints: parseFloat(targetGap.target_joints || 0),
+            actual_joints: parseFloat(targetGap.actual_joints || 0),
+            gap_joints: parseFloat(targetGap.gap_joints || 0)
         }
     });
 

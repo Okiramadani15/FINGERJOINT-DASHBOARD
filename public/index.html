@@ -70,10 +70,10 @@
         <div class="col-span-3 card-industrial p-6 flex flex-col items-center justify-between text-center border-t-8 border-slate-300">
             <h2 class="text-slate-900 font-bold text-[11px] uppercase tracking-[.3em]">Efficiency Engine</h2>
             <div class="w-full flex flex-col items-center justify-center">
-                <p class="text-slate-900 font-bold text-[10px] uppercase mb-1 opacity-60">Actual Output (Gross)</p>
+                <p class="text-slate-900 font-bold text-[10px] uppercase mb-1 opacity-60">Meter Lari</p>
                 <div class="flex flex-col items-center">
                     <span id="meter-lari" class="font-black tracking-tighter text-slate-900 italic">0.0</span>
-                    <span class="unit-label uppercase italic">m³</span>
+                    <span class="unit-label uppercase italic">m</span>
                 </div>
             </div>
             <div class="flex-1 flex items-center justify-center py-2">
@@ -107,27 +107,37 @@
                     <div class="flex flex-col gap-1">
                         <span id="joints" class="font-black text-slate-900 tracking-tighter italic">0</span>
                         <div class="flex justify-between items-center"><span class="text-[10px] font-bold text-slate-400 uppercase">Joints Made</span><span id="label-pisau" class="text-emerald-500 font-black text-2xl">100%</span></div>
+                        <div class="flex justify-between items-center"><span class="text-[10px] font-bold text-slate-400 uppercase">Target Joints</span><span id="joints-target" class="text-slate-900 font-black">0</span></div>
                     </div>
                     <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden border border-slate-200"><div id="bar-pisau" class="bg-emerald-500 h-full w-full transition-all duration-700"></div></div>
                 </div>
 
-                <div id="card-target" class="col-span-3 card-industrial p-5 flex flex-col justify-center border-l-[8px] border-blue-600">
-                    <p class="text-slate-500 font-bold text-[10px] uppercase tracking-widest mb-3">Shift Target vs Actual</p>
-                    <div class="grid grid-cols-3 gap-2 text-center">
-                        <div>
-                            <p class="text-[9px] font-black text-slate-400 uppercase tracking-wider">Target</p>
-                            <span id="target-val" class="font-black text-slate-800 text-2xl tracking-tighter">0</span>
-                        </div>
-                        <div class="border-x border-slate-100">
-                            <p class="text-[9px] font-black text-slate-400 uppercase tracking-wider">Actual</p>
-                            <span id="actual-val" class="font-black text-blue-600 text-2xl tracking-tighter">0</span>
-                        </div>
-                        <div>
-                            <p class="text-[9px] font-black text-slate-400 uppercase tracking-wider">Gap</p>
-                            <span id="sisa-target" class="font-black text-red-500 text-2xl tracking-tighter">0</span>
-                        </div>
-                    </div>
-                </div>
+                 <div id="card-target" class="col-span-3 card-industrial p-5 flex flex-col justify-center border-l-[8px] border-blue-600">
+                     <p class="text-slate-500 font-bold text-[10px] uppercase tracking-widest mb-3">Shift Target vs Actual</p>
+                     <div class="grid grid-cols-3 gap-2 text-center">
+                         <div>
+                             <p class="text-[9px] font-black text-slate-400 uppercase tracking-wider">Target</p>
+                             <div class="flex items-baseline gap-1 justify-center">
+                                 <span id="target-val" class="font-black text-slate-800 text-2xl tracking-tighter">0</span>
+                                 <span class="text-[10px] font-black text-slate-400 uppercase">m</span>
+                             </div>
+                         </div>
+                         <div class="border-x border-slate-100">
+                             <p class="text-[9px] font-black text-slate-400 uppercase tracking-wider">Actual</p>
+                             <div class="flex items-baseline gap-1 justify-center">
+                                 <span id="actual-val" class="font-black text-blue-600 text-2xl tracking-tighter">0</span>
+                                 <span class="text-[10px] font-black text-slate-400 uppercase">m</span>
+                             </div>
+                         </div>
+                         <div>
+                             <p class="text-[9px] font-black text-slate-400 uppercase tracking-wider">Gap</p>
+                             <div class="flex items-baseline gap-1 justify-center">
+                                 <span id="sisa-target" class="font-black text-red-500 text-2xl tracking-tighter">0</span>
+                                 <span class="text-[10px] font-black text-slate-400 uppercase">m</span>
+                             </div>
+                         </div>
+                     </div>
+                 </div>
 
                 <div class="col-span-3 card-industrial p-5 flex flex-col">
                     <h2 class="text-slate-900 font-extrabold text-[12px] uppercase tracking-widest mb-3">Latest Logs</h2>

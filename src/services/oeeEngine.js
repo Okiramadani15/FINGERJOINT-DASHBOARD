@@ -20,7 +20,7 @@ async function calculateOEE({ machineId, shiftNumber, date }) {
             ProductionData AS (
                 SELECT
                     COALESCE(SUM(meter_lari), 0) AS actual_production,
-                    COUNT(*) AS total_joints
+                    COALESCE(SUM(joint_count), 0) AS total_joints
                 FROM production_logs
                 WHERE machine_id = $2 AND shift_number = $3 AND DATE(timestamp) = $1
             )
@@ -35,7 +35,7 @@ async function calculateOEE({ machineId, shiftNumber, date }) {
 
         const result = await pool.query(query, [date, machineId, shiftNumber]);
 
-        if (result.rowCount === 0 || !result.rows[0].actual_production || !result.rows[0].total_joints) {
+        if (result.rowCount === 0 || result.rows.length === 0) {
             console.warn(`⚠️ No production data found for Machine ${machineId}, Shift ${shiftNumber} on ${date}`);
             return emptyOEE();
         }

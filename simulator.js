@@ -10,8 +10,8 @@ const pool = new Pool({
 });
 
 const MACHINE_ID = 1;
-const SHIFT_NUMBER = 1;
 const OPERATOR_NAME = 'Operator Simulasi';
+const INTERVAL_MS = parseInt(process.env.SIM_INTERVAL_MS || '10000', 10);
 
 // Fungsi untuk generate data acak
 function generateRandomData() {
@@ -31,6 +31,9 @@ function generateRandomData() {
 // Fungsi untuk insert data ke production_logs
 async function insertProductionData() {
     try {
+        const { getShiftInfo } = require('./src/utils/shiftManager');
+        const s = getShiftInfo();
+        const shiftNo = s.shift === '-' ? (new Date().getHours() < 15 ? 1 : 2) : s.shift;
         const data = generateRandomData();
         
         const query = `
@@ -42,7 +45,7 @@ async function insertProductionData() {
         
         const values = [
             MACHINE_ID,
-            SHIFT_NUMBER,
+            shiftNo,
             OPERATOR_NAME,
             data.meter_lari,
             data.joint_count,
@@ -78,7 +81,24 @@ async function insertTargetGapData() {
         
         if (targetResult.rows.length === 0) {
             console.log('⚠️  Tidak ada target untuk hari ini');
-            return;
+            try {
+                await pool.query(
+                    `
+                    INSERT INTO production_targets 
+                    (target_name, target_value, unit, target_meter_lari, target_jumlah_joint, effective_date)
+                    VALUES ($1, $2, $3, $4, $5, CURRENT_DATE)
+                    `,
+                    ['Target Harian', 100, 'meter', 100, 200]
+                );
+                console.log('🧪 Target default ditambahkan untuk hari ini (100m, 200 joints)');
+            } catch (e) {
+                console.error('❌ Gagal menambahkan target default:', e.message);
+                return;
+            }
+            // Ambil ulang target setelah insert
+            const reTarget = await pool.query(targetQuery);
+            if (reTarget.rows.length === 0) return;
+            targetResult.rows[0] = reTarget.rows[0];
         }
         
         const targetMeter = parseFloat(targetResult.rows[0].target_meter_lari);
@@ -231,14 +251,14 @@ async function runSimulation() {
     await insertTallyData();
     await insertTargetGapData(); // Tambahkan target gap
     
-    // Jalankan setiap 30 detik
+    // Jalankan setiap interval
     setInterval(async () => {
         await insertProductionData();
         await insertTallyData();
-        await insertTargetGapData(); // Update target gap setiap 30 detik
-    }, 30000); // 30 detik
+        await insertTargetGapData(); // Update target gap setiap interval
+    }, INTERVAL_MS); // default 10 detik
     
-    console.log('✅ Simulasi berjalan, data akan ditambahkan setiap 30 detik');
+    console.log(`✅ Simulasi berjalan, data akan ditambahkan setiap ${INTERVAL_MS/1000} detik`);
 }
 
 // Jalankan simulasi

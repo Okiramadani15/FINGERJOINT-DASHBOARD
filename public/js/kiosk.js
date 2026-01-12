@@ -21,8 +21,15 @@ function initBarChart() {
 }
 
 socket.on('productionUpdate', d => {
-    // Update data produksi & OEE
-    document.getElementById('joints').innerText = d.joints;
+    if (typeof d.current === 'number') {
+        document.getElementById('meter-lari').innerText = d.current.toFixed(1);
+    }
+    if (d.targetGap && typeof d.targetGap.actual_joints === 'number') {
+        document.getElementById('joints').innerText = d.targetGap.actual_joints;
+        document.getElementById('joints-target').innerText = d.targetGap.target_joints || 0;
+    } else {
+        document.getElementById('joints').innerText = d.joints;
+    }
 
     // Update tanggal dan shift
     if (d.tanggal) {
@@ -48,7 +55,7 @@ socket.on('productionUpdate', d => {
             document.getElementById('label-mood').innerText = 'EXCELLENT';
             persenTeks.className = 'font-black text-emerald-500 tracking-tighter';
         } else if (efficiency >= 85) {
-            document.getElementById('emoji').innerText = '�';
+            document.getElementById('emoji').innerText = '😊';
             document.getElementById('label-mood').innerText = 'GOOD';
             persenTeks.className = 'font-black text-yellow-500 tracking-tighter';
         } else {
@@ -58,7 +65,10 @@ socket.on('productionUpdate', d => {
         }
     }
 
-    const knife = Math.max(0, 100 - d.joints / 50);
+    let knife = Math.max(0, 100 - d.joints / 50);
+    if (d.targetGap && d.targetGap.target_joints > 0) {
+        knife = Math.max(0, 100 - (d.targetGap.actual_joints / d.targetGap.target_joints) * 100);
+    }
     document.getElementById('label-pisau').innerText = knife.toFixed(0) + '%';
     document.getElementById('bar-pisau').style.width = knife + '%';
 
