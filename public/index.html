@@ -26,10 +26,6 @@
         
         .font-mono-industrial { font-family: 'Roboto Mono', monospace; }
 
-        #meter-lari { font-size: clamp(60px, 8vw, 95px); line-height: 0.85; display: block; }
-        #sisa-target, #joints { font-size: clamp(40px, 5vw, 65px); line-height: 1; }
-        #persen-teks { font-size: clamp(55px, 6vw, 80px); line-height: 1; }
-
         .unit-label { font-size: 1.5rem; font-weight: 800; color: #94a3b8; margin-top: 5px; }
         .animate-mood { animation: subtle-bounce 4s infinite ease-in-out; }
         @keyframes subtle-bounce {
@@ -66,109 +62,125 @@
         </div>
     </header>
 
-    <main class="flex-1 p-5 grid grid-cols-12 gap-5 overflow-hidden">
-        <div class="col-span-3 card-industrial p-6 flex flex-col items-center justify-between text-center border-t-8 border-slate-300">
-            <h2 class="text-slate-900 font-bold text-[11px] uppercase tracking-[.3em]">Efficiency Engine</h2>
-            <div class="w-full flex flex-col items-center justify-center">
-                <p class="text-slate-900 font-bold text-[10px] uppercase mb-1 opacity-60">Meter Lari</p>
-                <div class="flex flex-col items-center">
-                    <span id="meter-lari" class="font-black tracking-tighter text-slate-900 italic">0.0</span>
-                    <span class="unit-label uppercase italic">m</span>
+    <main class="flex-1 p-2 grid grid-cols-12 gap-2 overflow-hidden min-h-0">
+        <div class="col-span-3 card-industrial p-3 flex flex-col items-center justify-between text-center border-t-8 border-slate-300 h-full overflow-hidden relative">
+            <h2 class="text-slate-900 font-bold text-[10px] uppercase tracking-[.3em] mt-1 shrink-0 z-10">Efficiency Engine</h2>
+            <div class="w-full flex flex-col items-center justify-center flex-1 min-h-0 z-10 -mt-4">
+                <p class="text-slate-500 font-bold text-[9px] uppercase mb-1 tracking-widest">Meter Lari</p>
+                <div class="flex flex-col items-center relative">
+                    <span id="meter-lari" class="font-black tracking-tighter text-slate-900 italic text-[5.5rem] leading-[0.85]">0.0</span>
+                    <span class="unit-label uppercase italic text-lg font-black text-slate-400 absolute -right-6 top-2">m</span>
                 </div>
             </div>
-            <div class="flex-1 flex items-center justify-center py-2">
-                <div id="emoji" class="text-[100px] filter drop-shadow-xl animate-mood select-none">😐</div>
+            <div class="w-full flex flex-col items-center shrink-0 gap-1 z-10 pb-1">
+                <div id="emoji" class="text-[5.5rem] filter drop-shadow-md animate-mood select-none leading-none">😐</div>
+                <div class="w-full bg-slate-50 p-2 rounded-2xl border border-slate-100 shadow-sm">
+                    <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-0.5 text-center">Status Mood</p>
+                    <p id="label-mood" class="text-2xl font-black uppercase tracking-tight text-slate-900 italic text-center">CONNECTING...</p>
+                </div>
+                <div class="flex flex-col items-center">
+                    <div id="persen-teks" class="font-black text-emerald-500 tracking-tighter text-[5rem] leading-none">0%</div>
+                    <p class="text-[8px] font-black uppercase tracking-[0.3em] text-slate-400 mt-1">Achievement</p>
+                </div>
             </div>
-            <div class="w-full bg-slate-50 p-3 rounded-xl border border-slate-100 shadow-inner mb-4">
-                <p class="text-[9px] font-black text-slate-400 uppercase mb-1 tracking-widest leading-none">Status Mood</p>
-                <p id="label-mood" class="text-lg font-black uppercase tracking-tight text-slate-900 italic">CONNECTING...</p>
-            </div>
-            <div class="w-full">
-                <div id="persen-teks" class="font-black text-emerald-500 tracking-tighter">0%</div>
-                <p class="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Achievement</p>
-            </div>
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-slate-100 rounded-full blur-3xl opacity-30 pointer-events-none z-0"></div>
         </div>
 
-        <div class="col-span-9 grid grid-rows-2 gap-5">
-            <div class="card-industrial p-5 flex flex-col h-full">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-slate-900 font-bold text-[12px] uppercase tracking-widest">Production Trend / Hour (m³)</h2>
-                    <div class="flex items-center gap-4 bg-slate-50 px-4 py-2 rounded-lg border border-slate-100">
-                        <div class="flex items-center gap-2 text-slate-900"><span class="w-3 h-3 bg-[#124170] rounded-sm"></span><span class="text-[10px] font-black uppercase tracking-tighter">Machine</span></div>
-                        <div class="flex items-center gap-2 text-slate-900"><span class="w-3 h-3 bg-[#10b981] rounded-sm"></span><span class="text-[10px] font-black uppercase tracking-tighter">Tally</span></div>
+        <div class="col-span-9 grid grid-rows-2 gap-2">
+            <div class="card-industrial p-2 flex flex-col h-full overflow-hidden">
+                <div class="flex justify-between items-center mb-1 shrink-0">
+                    <h2 class="text-slate-900 font-bold text-[10px] uppercase tracking-widest">Production Trend per Hour (m³)</h2>
+                    <div class="flex items-center gap-2 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">
+                        <div class="flex items-center gap-1 text-slate-900"><span class="w-2 h-2 bg-[#124170] rounded-sm"></span><span class="text-[8px] font-black uppercase tracking-tighter">Machine</span></div>
+                        <div class="flex items-center gap-1 text-slate-900"><span class="w-2 h-2 bg-[#10b981] rounded-sm"></span><span class="text-[8px] font-black uppercase tracking-tighter">Tally</span></div>
                     </div>
                 </div>
-                <div class="flex-1 min-h-0"><canvas id="barChart"></canvas></div>
+                <div class="flex-1 min-h-0 relative"><canvas id="barChart" style="height: 100%; width: 100%;"></canvas></div>
             </div>
 
-            <div class="grid grid-cols-12 gap-5">
-                <div class="col-span-3 card-industrial p-5 flex flex-col justify-between border-t-8 border-emerald-500">
-                    <p class="text-slate-900 font-bold text-[10px] uppercase tracking-widest">Knife Sharpness</p>
-                    <div class="flex flex-col gap-1">
-                        <span id="joints" class="font-black text-slate-900 tracking-tighter italic">0</span>
-                        <div class="flex justify-between items-center"><span class="text-[10px] font-bold text-slate-400 uppercase">Joints Made</span><span id="label-pisau" class="text-emerald-500 font-black text-2xl">100%</span></div>
-                        <div class="flex justify-between items-center"><span class="text-[10px] font-bold text-slate-400 uppercase">Target Joints</span><span id="joints-target" class="text-slate-900 font-black">0</span></div>
+            <div class="grid grid-cols-12 gap-2">
+                <div class="col-span-3 card-industrial p-2 flex flex-col justify-between border-t-8 border-emerald-500 overflow-hidden">
+                    <p class="text-slate-900 font-bold text-[8px] uppercase tracking-widest shrink-0">Knife Sharpness</p>
+                    <div class="flex flex-col gap-0.5 flex-1 justify-center">
+                        <span id="joints" class="font-black text-slate-900 tracking-tighter italic text-4xl">0</span>
+                        <div class="flex justify-between items-center"><span class="text-[8px] font-bold text-slate-400 uppercase">Joints Made</span><span id="label-pisau" class="text-emerald-500 font-black text-lg">100%</span></div>
+                        <div class="flex justify-between items-center"><span class="text-[8px] font-bold text-slate-400 uppercase">Target Joints</span><span id="joints-target" class="text-slate-900 font-black text-sm">0</span></div>
                     </div>
-                    <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden border border-slate-200"><div id="bar-pisau" class="bg-emerald-500 h-full w-full transition-all duration-700"></div></div>
+                    <div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden border border-slate-200 shrink-0"><div id="bar-pisau" class="bg-emerald-500 h-full w-full transition-all duration-700"></div></div>
                 </div>
 
-                 <div id="card-target" class="col-span-3 card-industrial p-5 flex flex-col justify-center border-l-[8px] border-blue-600">
-                     <p class="text-slate-500 font-bold text-[10px] uppercase tracking-widest mb-3">Shift Target vs Actual</p>
-                     <div class="grid grid-cols-3 gap-2 text-center">
-                         <div>
-                             <p class="text-[9px] font-black text-slate-400 uppercase tracking-wider">Target</p>
-                             <div class="flex items-baseline gap-1 justify-center">
-                                 <span id="target-val" class="font-black text-slate-800 text-2xl tracking-tighter">0</span>
-                                 <span class="text-[10px] font-black text-slate-400 uppercase">m</span>
-                             </div>
+                <div id="card-target" class="col-span-3 card-industrial p-2 flex flex-col justify-between border-l-[8px] border-blue-600 overflow-hidden">
+                     <p class="text-slate-500 font-bold text-[8px] uppercase tracking-widest mb-0.5 shrink-0">Shift Target vs Actual</p>
+                     <div class="grid grid-cols-1 gap-1 flex-1 justify-center">
+                         <div class="flex justify-between items-center border-b border-slate-100 pb-0.5">
+                             <p class="text-[8px] font-black text-slate-400 uppercase tracking-wider">Target</p>
+                             <div class="flex items-baseline gap-1">
+                                <span id="target-val" class="font-black text-slate-800 text-lg tracking-tighter">0</span>
+                                <span class="text-[8px] font-black text-slate-400 uppercase">m</span>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center border-b border-slate-100 pb-0.5">
+                            <p class="text-[8px] font-black text-slate-400 uppercase tracking-wider">Actual</p>
+                            <div class="flex items-baseline gap-1">
+                                <span id="actual-val" class="font-black text-blue-600 text-lg tracking-tighter">0</span>
+                                <span class="text-[8px] font-black text-slate-400 uppercase">m</span>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center">
+                           <p class="text-[8px] font-black text-slate-400 uppercase tracking-wider">Gap</p>
+                           <div class="flex items-baseline gap-1">
+                               <span id="sisa-target" class="font-black text-red-500 text-lg tracking-tight">0</span>
+                               <span class="text-[8px] font-black text-slate-400 uppercase">m</span>
+                           </div>
+                       </div>
+                     </div>
+                     <div class="mt-auto pt-1 shrink-0">
+                         <div class="flex justify-between items-center mb-0.5">
+                             <span id="target-status" class="text-[7px] font-black uppercase text-slate-400">-</span>
+                             <span id="target-achievement-label" class="text-[7px] font-black text-slate-900">0%</span>
                          </div>
-                         <div class="border-x border-slate-100">
-                             <p class="text-[9px] font-black text-slate-400 uppercase tracking-wider">Actual</p>
-                             <div class="flex items-baseline gap-1 justify-center">
-                                 <span id="actual-val" class="font-black text-blue-600 text-2xl tracking-tighter">0</span>
-                                 <span class="text-[10px] font-black text-slate-400 uppercase">m</span>
-                             </div>
-                         </div>
-                         <div>
-                             <p class="text-[9px] font-black text-slate-400 uppercase tracking-wider">Gap</p>
-                             <div class="flex items-baseline gap-1 justify-center">
-                                 <span id="sisa-target" class="font-black text-red-500 text-2xl tracking-tighter">0</span>
-                                 <span class="text-[10px] font-black text-slate-400 uppercase">m</span>
-                             </div>
+                         <div class="w-full bg-slate-100 h-1 rounded-full overflow-hidden border border-slate-200">
+                             <div id="target-achievement-bar" class="bg-blue-600 h-full w-0 transition-all duration-700"></div>
                          </div>
                      </div>
                  </div>
 
-                <div class="col-span-3 card-industrial p-5 flex flex-col">
-                    <h2 class="text-slate-900 font-extrabold text-[12px] uppercase tracking-widest mb-3">Latest Logs</h2>
-                    <div class="flex-1 overflow-hidden">
+                <div class="col-span-3 card-industrial p-2 flex flex-col overflow-hidden">
+                    <div class="flex justify-between items-center mb-1 shrink-0">
+                        <h2 class="text-slate-900 font-extrabold text-[9px] uppercase tracking-widest">Downtime Log</h2>
+                        <div id="downtime-summary" class="flex items-center gap-1">
+                            <span id="dt-total" class="text-[8px] font-black bg-red-50 text-red-600 px-1.5 py-0.5 rounded-md border border-red-200">0m</span>
+                            <span id="dt-count" class="text-[8px] font-black bg-slate-50 text-slate-600 px-1.5 py-0.5 rounded-md border border-slate-200">0</span>
+                        </div>
+                    </div>
+                    <div class="flex-1 min-h-0 overflow-hidden">
                         <table class="w-full text-left">
                             <tbody id="downtime-body" class="divide-y divide-slate-50">
-                                <tr><td class="py-2 text-[13px] font-black uppercase text-slate-900 italic">No Incident</td><td class="py-2 text-right text-[13px] font-black text-emerald-500">-</td></tr>
+                                <tr><td class="py-0.5 text-[10px] font-black uppercase text-slate-900 italic">No Incident</td><td class="py-0.5 text-right text-[10px] font-black text-emerald-500">-</td></tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
 
-                <div id="oee-card" class="col-span-3 bg-slate-900 p-5 flex flex-col items-center justify-center rounded-2xl relative shadow-2xl border-b-8 border-emerald-500">
-                    <div class="absolute top-4 right-4 flex gap-1">
+                <div id="oee-card" class="col-span-3 bg-slate-900 p-2 flex flex-col items-center justify-center rounded-2xl relative shadow-2xl border-b-8 border-emerald-500 overflow-hidden">
+                    <div class="absolute top-2 right-2 flex gap-1">
                         <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
                     </div>
-                    <p class="text-slate-400 font-bold text-[11px] uppercase tracking-[0.2em] mb-1 opacity-60">Overall Equipment Eff.</p>
-                    <div id="oee-total" class="text-6xl font-black text-emerald-400 tracking-tighter italic">0.0%</div>
+                    <p class="text-slate-400 font-bold text-[8px] uppercase tracking-[0.2em] mb-0.5 opacity-60">Overall Equipment Eff.</p>
+                    <div id="oee-total" class="text-5xl font-black text-emerald-400 tracking-tighter italic">0.0%</div>
                     
-                    <div class="w-full grid grid-cols-3 gap-1 mt-3 border-t border-white/10 pt-3">
+                    <div class="w-full grid grid-cols-3 gap-1 mt-1 border-t border-white/10 pt-1">
                         <div class="text-center">
-                            <p class="text-[8px] font-bold text-slate-500 uppercase">Avail</p>
-                            <p id="oee-a" class="text-[12px] font-black text-white">0%</p>
+                            <p class="text-[7px] font-bold text-slate-500 uppercase">Avail</p>
+                            <p id="oee-a" class="text-[9px] font-black text-white">0%</p>
                         </div>
                         <div class="text-center border-x border-white/10">
-                            <p class="text-[8px] font-bold text-slate-500 uppercase">Perf</p>
-                            <p id="oee-p" class="text-[12px] font-black text-white">0%</p>
+                            <p class="text-[7px] font-bold text-slate-500 uppercase">Perf</p>
+                            <p id="oee-p" class="text-[9px] font-black text-white">0%</p>
                         </div>
                         <div class="text-center">
-                            <p class="text-[8px] font-bold text-slate-500 uppercase">Qual</p>
-                            <p id="oee-q" class="text-[12px] font-black text-white">0%</p>
+                            <p class="text-[7px] font-bold text-slate-500 uppercase">Qual</p>
+                            <p id="oee-q" class="text-[9px] font-black text-white">0%</p>
                         </div>
                     </div>
                 </div>
